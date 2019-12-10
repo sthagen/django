@@ -50,10 +50,10 @@ times with multiple contexts)
 '<html></html>'
 """
 
+import inspect
 import logging
 import re
 from enum import Enum
-from inspect import getcallargs, getfullargspec, unwrap
 
 from django.template.context import BaseContext
 from django.utils.formats import localize
@@ -707,9 +707,9 @@ class FilterExpression:
         # First argument, filter input, is implied.
         plen = len(provided) + 1
         # Check to see if a decorator is providing the real function.
-        func = unwrap(func)
+        func = inspect.unwrap(func)
 
-        args, _, _, defaults, _, _, _ = getfullargspec(func)
+        args, _, _, defaults, _, _, _ = inspect.getfullargspec(func)
         alen = len(args)
         dlen = len(defaults or [])
         # Not enough OR Too many
@@ -857,8 +857,9 @@ class Variable:
                         try:  # method call (assuming no args required)
                             current = current()
                         except TypeError:
+                            signature = inspect.signature(current)
                             try:
-                                getcallargs(current)
+                                signature.bind()
                             except TypeError:  # arguments *were* required
                                 current = context.template.engine.string_if_invalid  # invalid method call
                             else:
