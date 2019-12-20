@@ -1138,6 +1138,8 @@ class AggregateTestCase(TestCase):
         with self.assertNumQueries(1) as ctx:
             list(publisher_qs)
         self.assertEqual(ctx[0]['sql'].count('SELECT'), 2)
+        # The GROUP BY should not be by alias either.
+        self.assertEqual(ctx[0]['sql'].lower().count('latest_book_pubdate'), 1)
 
     @skipUnlessDBFeature('supports_subqueries_in_group_by')
     def test_group_by_subquery_annotation(self):
@@ -1170,3 +1172,23 @@ class AggregateTestCase(TestCase):
             Exists(long_books_qs),
         ).annotate(total=Count('*'))
         self.assertEqual(dict(has_long_books_breakdown), {True: 2, False: 3})
+
+    def test_aggregation_subquery_annotation_related_field(self):
+        publisher = Publisher.objects.create(name=self.a9.name, num_awards=2)
+        book = Book.objects.create(
+            isbn='159059999', name='Test book.', pages=819, rating=2.5,
+            price=Decimal('14.44'), contact=self.a9, publisher=publisher,
+            pubdate=datetime.date(2019, 12, 6),
+        )
+        book.authors.add(self.a5, self.a6, self.a7)
+        books_qs = Book.objects.annotate(
+            contact_publisher=Subquery(
+                Publisher.objects.filter(
+                    pk=OuterRef('publisher'),
+                    name=OuterRef('contact__name'),
+                ).values('name')[:1],
+            )
+        ).filter(
+            contact_publisher__isnull=False,
+        ).annotate(count=Count('authors'))
+        self.assertSequenceEqual(books_qs, [book])
