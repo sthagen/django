@@ -616,21 +616,19 @@ class ForeignObject(RelatedField):
             related_fields.append((from_field, to_field))
         return related_fields
 
-    @property
+    @cached_property
     def related_fields(self):
-        if not hasattr(self, '_related_fields'):
-            self._related_fields = self.resolve_related_fields()
-        return self._related_fields
+        return self.resolve_related_fields()
 
-    @property
+    @cached_property
     def reverse_related_fields(self):
         return [(rhs_field, lhs_field) for lhs_field, rhs_field in self.related_fields]
 
-    @property
+    @cached_property
     def local_related_fields(self):
         return tuple(lhs_field for lhs_field, rhs_field in self.related_fields)
 
-    @property
+    @cached_property
     def foreign_related_fields(self):
         return tuple(rhs_field for lhs_field, rhs_field in self.related_fields if rhs_field)
 
@@ -922,6 +920,21 @@ class ForeignKey(ForeignObject):
                     'field': self.remote_field.field_name, 'value': value,
                 },  # 'pk' is included for backwards compatibility
             )
+
+    def resolve_related_fields(self):
+        related_fields = super().resolve_related_fields()
+        for from_field, to_field in related_fields:
+            if to_field and to_field.model != self.remote_field.model._meta.concrete_model:
+                raise exceptions.FieldError(
+                    "'%s.%s' refers to field '%s' which is not local to model "
+                    "'%s'." % (
+                        self.model._meta.label,
+                        self.name,
+                        to_field.name,
+                        self.remote_field.model._meta.concrete_model._meta.label,
+                    )
+                )
+        return related_fields
 
     def get_attname(self):
         return '%s_id' % self.name
