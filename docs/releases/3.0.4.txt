@@ -9,4 +9,8 @@ Django 3.0.4 fixes several bugs in 3.0.3.
 Bugfixes
 ========
 
-* ...
+* Fixed a data loss possibility when using caching from async code
+  (:ticket:`31253`).
+
+* Fixed a regression in Django 3.0 that caused a file response using a
+  temporary file to be closed incorrectly (:ticket:`31240`).
