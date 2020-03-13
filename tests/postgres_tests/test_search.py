@@ -365,6 +365,15 @@ class TestCombinations(GrailTestData, PostgreSQLTestCase):
         )
         self.assertCountEqual(searched, [self.french, self.verse2])
 
+    def test_combined_configs(self):
+        searched = Line.objects.filter(
+            dialogue__search=(
+                SearchQuery('nostrils', config='simple') &
+                SearchQuery('bowels', config='simple')
+            ),
+        )
+        self.assertSequenceEqual(searched, [self.verse2])
+
     @skipUnlessDBFeature('has_phraseto_tsquery')
     def test_combine_raw_phrase(self):
         searched = Line.objects.filter(
@@ -449,22 +458,26 @@ class SearchVectorIndexTests(PostgreSQLTestCase):
 class SearchQueryTests(PostgreSQLSimpleTestCase):
     def test_str(self):
         tests = (
-            (~SearchQuery('a'), '~SearchQuery(a)'),
+            (~SearchQuery('a'), '~SearchQuery(Value(a))'),
             (
                 (SearchQuery('a') | SearchQuery('b')) & (SearchQuery('c') | SearchQuery('d')),
-                '((SearchQuery(a) || SearchQuery(b)) && (SearchQuery(c) || SearchQuery(d)))',
+                '((SearchQuery(Value(a)) || SearchQuery(Value(b))) && '
+                '(SearchQuery(Value(c)) || SearchQuery(Value(d))))',
             ),
             (
                 SearchQuery('a') & (SearchQuery('b') | SearchQuery('c')),
-                '(SearchQuery(a) && (SearchQuery(b) || SearchQuery(c)))',
+                '(SearchQuery(Value(a)) && (SearchQuery(Value(b)) || '
+                'SearchQuery(Value(c))))',
             ),
             (
                 (SearchQuery('a') | SearchQuery('b')) & SearchQuery('c'),
-                '((SearchQuery(a) || SearchQuery(b)) && SearchQuery(c))'
+                '((SearchQuery(Value(a)) || SearchQuery(Value(b))) && '
+                'SearchQuery(Value(c)))'
             ),
             (
                 SearchQuery('a') & (SearchQuery('b') & (SearchQuery('c') | SearchQuery('d'))),
-                '(SearchQuery(a) && (SearchQuery(b) && (SearchQuery(c) || SearchQuery(d))))',
+                '(SearchQuery(Value(a)) && (SearchQuery(Value(b)) && '
+                '(SearchQuery(Value(c)) || SearchQuery(Value(d)))))',
             ),
         )
         for query, expected_str in tests:
