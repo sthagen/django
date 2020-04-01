@@ -160,6 +160,14 @@ Minor features
 
 * :lookup:`search` lookup now supports query expressions.
 
+* The new ``cover_density`` parameter of
+  :class:`~django.contrib.postgres.search.SearchRank` allows ranking by cover
+  density.
+
+* The new ``normalization`` parameter of
+  :class:`~django.contrib.postgres.search.SearchRank` allows rank
+  normalization.
+
 :mod:`django.contrib.redirects`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -262,6 +270,9 @@ Forms
   now uses ``DATE_INPUT_FORMATS`` in addition to ``DATETIME_INPUT_FORMATS``
   when converting a field input to a ``datetime`` value.
 
+* :attr:`.MultiWidget.widgets` now accepts a dictionary which allows
+  customizing subwidget ``name`` attributes.
+
 Generic Views
 ~~~~~~~~~~~~~
 
@@ -288,6 +299,9 @@ Management Commands
   for running the ``database`` system checks. Previously these checks were
   enabled for all configured :setting:`DATABASES` by passing the ``database``
   tag to the command.
+
+* The new :option:`migrate --check` option makes the command exit with a
+  non-zero status when unapplied migrations are detected.
 
 Migrations
 ~~~~~~~~~~
@@ -326,6 +340,12 @@ Models
 
 * The new ``is_dst``  parameter of the :meth:`.QuerySet.datetimes` determines
   the treatment of nonexistent and ambiguous datetimes.
+
+* The new :class:`~django.db.models.F` expression ``bitxor()`` method allows
+  :ref:`bitwise XOR operation <using-f-expressions-in-filters>`.
+
+* :meth:`.QuerySet.bulk_create` now sets the primary key on objects when using
+  MariaDB 10.5+.
 
 Pagination
 ~~~~~~~~~~
@@ -537,8 +557,8 @@ Miscellaneous
   ``ETag`` header to responses with an empty
   :attr:`~django.http.HttpResponse.content`.
 
-* ``django.utils.decorators.classproperty()`` decorator is moved to
-  ``django.utils.functional.classproperty()``.
+* ``django.utils.decorators.classproperty()`` decorator is made public and
+  moved to :class:`django.utils.functional.classproperty()`.
 
 * :tfilter:`floatformat` template filter now outputs (positive) ``0`` for
   negative numbers which round to zero.
@@ -582,6 +602,10 @@ Miscellaneous
 
 * The admin CSS classes ``row1`` and ``row2`` are removed in favor of
   ``:nth-child(odd)`` and ``:nth-child(even)`` pseudo-classes.
+
+* The :func:`~django.contrib.auth.hashers.make_password` now requires its
+  argument to be a string or bytes. Other types should be explicitly cast to
+  one of these.
 
 .. _deprecated-features-3.1:
 
@@ -639,6 +663,10 @@ Miscellaneous
 
 * The ``list`` message for :class:`~django.forms.ModelMultipleChoiceField` is
   deprecated in favor of ``invalid_list``.
+
+* The passing of URL kwargs directly to the context by
+  :class:`~django.views.generic.base.TemplateView` is deprecated. Reference
+  them in the template with ``view.kwargs`` instead.
 
 .. _removed-features-3.1:
 
