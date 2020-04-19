@@ -249,17 +249,25 @@ class BaseModelAdmin(metaclass=forms.MediaDefiningClass):
             return None
         db = kwargs.get('using')
 
-        autocomplete_fields = self.get_autocomplete_fields(request)
-        if db_field.name in autocomplete_fields:
-            kwargs['widget'] = AutocompleteSelectMultiple(db_field.remote_field, self.admin_site, using=db)
-        elif db_field.name in self.raw_id_fields:
-            kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.remote_field, self.admin_site, using=db)
-        elif db_field.name in [*self.filter_vertical, *self.filter_horizontal]:
-            kwargs['widget'] = widgets.FilteredSelectMultiple(
-                db_field.verbose_name,
-                db_field.name in self.filter_vertical
-            )
-
+        if 'widget' not in kwargs:
+            autocomplete_fields = self.get_autocomplete_fields(request)
+            if db_field.name in autocomplete_fields:
+                kwargs['widget'] = AutocompleteSelectMultiple(
+                    db_field.remote_field,
+                    self.admin_site,
+                    using=db,
+                )
+            elif db_field.name in self.raw_id_fields:
+                kwargs['widget'] = widgets.ManyToManyRawIdWidget(
+                    db_field.remote_field,
+                    self.admin_site,
+                    using=db,
+                )
+            elif db_field.name in [*self.filter_vertical, *self.filter_horizontal]:
+                kwargs['widget'] = widgets.FilteredSelectMultiple(
+                    db_field.verbose_name,
+                    db_field.name in self.filter_vertical
+                )
         if 'queryset' not in kwargs:
             queryset = self.get_field_queryset(db, db_field, request)
             if queryset is not None:
@@ -850,15 +858,20 @@ class ModelAdmin(BaseModelAdmin):
     def _get_base_actions(self):
         """Return the list of actions, prior to any request-based filtering."""
         actions = []
+        base_actions = (self.get_action(action) for action in self.actions or [])
+        # get_action might have returned None, so filter any of those out.
+        base_actions = [action for action in base_actions if action]
+        base_action_names = {name for _, name, _ in base_actions}
 
         # Gather actions from the admin site first
         for (name, func) in self.admin_site.actions:
+            if name in base_action_names:
+                continue
             description = getattr(func, 'short_description', name.replace('_', ' '))
             actions.append((func, name, description))
         # Add actions from this ModelAdmin.
-        actions.extend(self.get_action(action) for action in self.actions or [])
-        # get_action might have returned None, so filter any of those out.
-        return filter(None, actions)
+        actions.extend(base_actions)
+        return actions
 
     def _filter_actions_by_permissions(self, request, actions):
         """Filter out any actions that the user doesn't have access to."""

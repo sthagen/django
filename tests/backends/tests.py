@@ -161,16 +161,8 @@ class LongNameTest(TransactionTestCase):
             VLM._meta.db_table,
             VLM_m2m._meta.db_table,
         ]
-        sequences = [
-            {
-                'column': VLM._meta.pk.column,
-                'table': VLM._meta.db_table
-            },
-        ]
-        sql_list = connection.ops.sql_flush(no_style(), tables, sequences)
-        with connection.cursor() as cursor:
-            for statement in sql_list:
-                cursor.execute(statement)
+        sql_list = connection.ops.sql_flush(no_style(), tables, reset_sequences=True)
+        connection.ops.execute_sql_flush(connection.alias, sql_list)
 
 
 class SequenceResetTest(TestCase):

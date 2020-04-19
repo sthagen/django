@@ -30,9 +30,7 @@ from django.db.models.lookups import Lookup
 from django.db.models.query_utils import (
     Q, check_rel_lookup_compatibility, refs_expression,
 )
-from django.db.models.sql.constants import (
-    INNER, LOUTER, ORDER_DIR, ORDER_PATTERN, SINGLE,
-)
+from django.db.models.sql.constants import INNER, LOUTER, ORDER_DIR, SINGLE
 from django.db.models.sql.datastructures import (
     BaseTable, Empty, Join, MultiJoin,
 )
@@ -233,7 +231,8 @@ class Query(BaseExpression):
     @property
     def output_field(self):
         if len(self.select) == 1:
-            return self.select[0].field
+            select = self.select[0]
+            return getattr(select, 'target', None) or select.field
         elif len(self.annotation_select) == 1:
             return next(iter(self.annotation_select.values())).output_field
 
@@ -1894,7 +1893,28 @@ class Query(BaseExpression):
         """
         errors = []
         for item in ordering:
-            if not hasattr(item, 'resolve_expression') and not ORDER_PATTERN.match(item):
+            if isinstance(item, str):
+                if '.' in item:
+                    warnings.warn(
+                        'Passing column raw column aliases to order_by() is '
+                        'deprecated. Wrap %r in a RawSQL expression before '
+                        'passing it to order_by().' % item,
+                        category=RemovedInDjango40Warning,
+                        stacklevel=3,
+                    )
+                    continue
+                if item == '?':
+                    continue
+                if item.startswith('-'):
+                    item = item[1:]
+                if item in self.annotations:
+                    continue
+                if self.extra and item in self.extra:
+                    continue
+                # names_to_path() validates the lookup. A descriptive
+                # FieldError will be raise if it's not.
+                self.names_to_path(item.split(LOOKUP_SEP), self.model._meta)
+            elif not hasattr(item, 'resolve_expression'):
                 errors.append(item)
             if getattr(item, 'contains_aggregate', False):
                 raise FieldError(
