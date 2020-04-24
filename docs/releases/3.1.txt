@@ -77,6 +77,8 @@ Minor features
 * Filters in the right sidebar of the admin changelist view now contains a link
   to clear all filters.
 
+* ``XRegExp`` is upgraded from version 2.0.0 to 3.2.0.
+
 :mod:`django.contrib.admindocs`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -320,6 +322,9 @@ Management Commands
 * The new :option:`dbshell -- ARGUMENTS <dbshell -->` option allows passing
   extra arguments to the command-line client for the database.
 
+* The :djadmin:`flush` and :djadmin:`sqlflush` commands now include SQL to
+  reset sequences on SQLite.
+
 Migrations
 ~~~~~~~~~~
 
@@ -525,6 +530,10 @@ backends.
 
 * The ``allow_cascade`` argument of ``DatabaseOperations.sql_flush()`` is now a
   keyword-only argument.
+
+* The ``using`` positional argument of
+  ``DatabaseOperations.execute_sql_flush()`` is removed. The method now uses
+  the database of the called instance.
 
 Dropped support for MariaDB 10.1
 --------------------------------

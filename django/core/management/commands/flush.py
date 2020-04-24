@@ -50,7 +50,7 @@ class Command(BaseCommand):
 
         if interactive:
             confirm = input("""You have requested a flush of the database.
-This will IRREVERSIBLY DESTROY all data currently in the %r database,
+This will IRREVERSIBLY DESTROY all data currently in the "%s" database,
 and return each table to an empty state.
 Are you sure you want to do this?
 
@@ -60,7 +60,7 @@ Are you sure you want to do this?
 
         if confirm == 'yes':
             try:
-                connection.ops.execute_sql_flush(database, sql_list)
+                connection.ops.execute_sql_flush(sql_list)
             except Exception as exc:
                 raise CommandError(
                     "Database %s couldn't be flushed. Possible reasons:\n"
