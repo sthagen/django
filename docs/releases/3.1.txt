@@ -98,6 +98,10 @@ Minor features
 * The password reset mechanism now uses the SHA-256 hashing algorithm. Support
   for tokens that use the old hashing algorithm remains until Django 4.0.
 
+* :meth:`.AbstractBaseUser.get_session_auth_hash` now uses the SHA-256 hashing
+  algorithm. Support for user sessions that use the old hashing algorithm
+  remains until Django 4.0.
+
 :mod:`django.contrib.contenttypes`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -171,6 +175,9 @@ Minor features
 * The new ``normalization`` parameter of
   :class:`~django.contrib.postgres.search.SearchRank` allows rank
   normalization.
+
+* The new :attr:`.ExclusionConstraint.deferrable` attribute allows creating
+  deferrable exclusion constraints.
 
 :mod:`django.contrib.redirects`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -376,6 +383,9 @@ Models
 * SQLite functions are now marked as :py:meth:`deterministic
   <sqlite3.Connection.create_function>` on Python 3.8+. This allows using them
   in check constraints and partial indexes.
+
+* The new :attr:`.UniqueConstraint.deferrable` attribute allows creating
+  deferrable unique constraints.
 
 Pagination
 ~~~~~~~~~~
@@ -667,6 +677,11 @@ Miscellaneous
 
 * The undocumented ``version`` parameter to the
   :class:`~django.contrib.gis.db.models.functions.AsKML` function is removed.
+
+* :ref:`JSON and YAML serializers <serialization-formats>`, used by
+  :djadmin:`dumpdata`, now dump all data with Unicode by default. If you need
+  the previous behavior, pass ``ensure_ascii=True`` to JSON serializer, or
+  ``allow_unicode=False`` to YAML serializer.
 
 .. _deprecated-features-3.1:
 
