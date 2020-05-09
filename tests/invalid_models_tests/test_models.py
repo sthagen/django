@@ -5,7 +5,7 @@ from django.core.checks.model_checks import _check_lazy_references
 from django.db import connection, connections, models
 from django.db.models.functions import Lower
 from django.db.models.signals import post_init
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, skipUnlessDBFeature
 from django.test.utils import isolate_apps, override_settings, register_lookup
 
 
@@ -893,6 +893,15 @@ class OtherModelTests(SimpleTestCase):
         with register_lookup(models.CharField, Lower):
             self.assertEqual(Model.check(), [])
 
+    def test_ordering_pointing_to_lookup_not_transform(self):
+        class Model(models.Model):
+            test = models.CharField(max_length=100)
+
+            class Meta:
+                ordering = ('test__isnull',)
+
+        self.assertEqual(Model.check(), [])
+
     def test_ordering_pointing_to_related_model_pk(self):
         class Parent(models.Model):
             pass
@@ -1338,6 +1347,40 @@ class OtherModelTests(SimpleTestCase):
                 id='signals.E001',
             ),
         ])
+
+
+@isolate_apps('invalid_models_tests')
+class JSONFieldTests(TestCase):
+    @skipUnlessDBFeature('supports_json_field')
+    def test_ordering_pointing_to_json_field_value(self):
+        class Model(models.Model):
+            field = models.JSONField()
+
+            class Meta:
+                ordering = ['field__value']
+
+        self.assertEqual(Model.check(databases=self.databases), [])
+
+    def test_check_jsonfield(self):
+        class Model(models.Model):
+            field = models.JSONField()
+
+        error = Error(
+            '%s does not support JSONFields.' % connection.display_name,
+            obj=Model,
+            id='fields.E180',
+        )
+        expected = [] if connection.features.supports_json_field else [error]
+        self.assertEqual(Model.check(databases=self.databases), expected)
+
+    def test_check_jsonfield_required_db_features(self):
+        class Model(models.Model):
+            field = models.JSONField()
+
+            class Meta:
+                required_db_features = {'supports_json_field'}
+
+        self.assertEqual(Model.check(databases=self.databases), [])
 
 
 @isolate_apps('invalid_models_tests')

@@ -32,8 +32,8 @@ from .schema import DatabaseSchemaEditor                    # isort:skip
 from .validation import DatabaseValidation                  # isort:skip
 
 version = Database.version_info
-if version < (1, 3, 13):
-    raise ImproperlyConfigured('mysqlclient 1.3.13 or newer is required; you have %s.' % Database.__version__)
+if version < (1, 4, 0):
+    raise ImproperlyConfigured('mysqlclient 1.4.0 or newer is required; you have %s.' % Database.__version__)
 
 
 # MySQLdb returns TIME columns as timedelta -- they are more like timedelta in
@@ -118,6 +118,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         'BigIntegerField': 'bigint',
         'IPAddressField': 'char(15)',
         'GenericIPAddressField': 'char(39)',
+        'JSONField': 'json',
         'NullBooleanField': 'bool',
         'OneToOneField': 'integer',
         'PositiveBigIntegerField': 'bigint UNSIGNED',
@@ -341,11 +342,16 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     @cached_property
     def data_type_check_constraints(self):
         if self.features.supports_column_check_constraints:
-            return {
+            check_constraints = {
                 'PositiveBigIntegerField': '`%(column)s` >= 0',
                 'PositiveIntegerField': '`%(column)s` >= 0',
                 'PositiveSmallIntegerField': '`%(column)s` >= 0',
             }
+            if self.mysql_is_mariadb and self.mysql_version < (10, 4, 3):
+                # MariaDB < 10.4.3 doesn't automatically use the JSON_VALID as
+                # a check constraint.
+                check_constraints['JSONField'] = 'JSON_VALID(`%(column)s`)'
+            return check_constraints
         return {}
 
     @cached_property

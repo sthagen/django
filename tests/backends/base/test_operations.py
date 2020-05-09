@@ -41,7 +41,7 @@ class SimpleDatabaseOperationTests(SimpleTestCase):
         self.assertEqual(self.ops.set_time_zone_sql(), '')
 
     def test_sql_flush(self):
-        msg = 'subclasses of BaseDatabaseOperations must provide a sql_flush() method'
+        msg = 'subclasses of BaseDatabaseOperations must provide an sql_flush() method'
         with self.assertRaisesMessage(NotImplementedError, msg):
             self.ops.sql_flush(None, None)
 
@@ -120,6 +120,11 @@ class SimpleDatabaseOperationTests(SimpleTestCase):
     def test_datetime_extract_sql(self):
         with self.assertRaisesMessage(NotImplementedError, self.may_require_msg % 'datetime_extract_sql'):
             self.ops.datetime_extract_sql(None, None, None)
+
+    def test_json_cast_text_sql(self):
+        msg = self.may_require_msg % 'json_cast_text_sql'
+        with self.assertRaisesMessage(NotImplementedError, msg):
+            self.ops.json_cast_text_sql(None)
 
 
 class DatabaseOperationTests(TestCase):

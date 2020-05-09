@@ -159,6 +159,13 @@ class BaseDatabaseOperations:
         """
         return self.date_extract_sql(lookup_type, field_name)
 
+    def json_cast_text_sql(self, field_name):
+        """Return the SQL to cast a JSON value to text value."""
+        raise NotImplementedError(
+            'subclasses of BaseDatabaseOperations may require a '
+            'json_cast_text_sql() method'
+        )
+
     def deferrable_sql(self):
         """
         Return the SQL to make a constraint "initially deferred" during a
@@ -398,7 +405,7 @@ class BaseDatabaseOperations:
         to tables with foreign keys pointing the tables being truncated.
         PostgreSQL requires a cascade even if these tables are empty.
         """
-        raise NotImplementedError('subclasses of BaseDatabaseOperations must provide a sql_flush() method')
+        raise NotImplementedError('subclasses of BaseDatabaseOperations must provide an sql_flush() method')
 
     def execute_sql_flush(self, sql_list):
         """Execute a list of SQL statements to flush the database."""

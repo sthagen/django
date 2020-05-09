@@ -19,8 +19,8 @@ design decisions on which features to support and which assumptions we can make
 safely.
 
 This file describes some of the features that might be relevant to Django
-usage. Of course, it is not intended as a replacement for server-specific
-documentation or reference manuals.
+usage. It is not intended as a replacement for server-specific documentation or
+reference manuals.
 
 General notes
 =============
@@ -361,7 +361,7 @@ Connector/Python includes `its own`_.
 mysqlclient
 ~~~~~~~~~~~
 
-Django requires `mysqlclient`_ 1.3.13 or later.
+Django requires `mysqlclient`_ 1.4.0 or later.
 
 MySQL Connector/Python
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -782,6 +782,22 @@ not appear, or may appear twice, in subsequent results fetched from the
 iterator. Your code must handle this.
 
 .. _`Isolation in SQLite`: https://sqlite.org/isolation.html
+
+.. _sqlite-json1:
+
+Enabling JSON1 extension on SQLite
+----------------------------------
+
+To use :class:`~django.db.models.JSONField` on SQLite, you need to enable the
+`JSON1 extension`_ on Python's :py:mod:`sqlite3` library. If the extension is
+not enabled on your installation, a system error (``fields.E180``) will be
+raised.
+
+To enable the JSON1 extension you can follow the instruction on
+`the wiki page`_.
+
+.. _JSON1 extension: https://www.sqlite.org/json1.html
+.. _the wiki page: https://code.djangoproject.com/wiki/JSON1Extension
 
 .. _oracle-notes:
 
