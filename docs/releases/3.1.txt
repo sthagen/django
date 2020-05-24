@@ -67,7 +67,7 @@ It should have no noticeable effect on any existing Django projects.
 JSONField for all supported database backends
 ---------------------------------------------
 
-Django now includes the :class:`.models.JSONField` and
+Django now includes :class:`.models.JSONField` and
 :class:`forms.JSONField <django.forms.JSONField>` that can be used on all
 supported database backends. Both fields support the use of custom JSON
 encoders and decoders. The model field supports the introspection, lookups, and
@@ -89,8 +89,17 @@ Minor features
   :attr:`.ModelAdmin.list_filter` allows filtering on empty values (empty
   strings and nulls) in the admin changelist view.
 
-* Filters in the right sidebar of the admin changelist view now contains a link
+* Filters in the right sidebar of the admin changelist view now contain a link
   to clear all filters.
+
+* The admin now has a sidebar on larger screens for easier navigation. It is
+  enabled by default but can be disabled by using a custom ``AdminSite`` and
+  setting :attr:`.AdminSite.enable_nav_sidebar` to ``False``.
+
+  Rendering the sidebar requires access to the current request in order to set
+  CSS and ARIA role affordances. This requires using
+  ``'django.template.context_processors.request'`` in the
+  ``'context_processors'`` option of :setting:`OPTIONS <TEMPLATES-OPTIONS>`.
 
 * ``XRegExp`` is upgraded from version 2.0.0 to 3.2.0.
 
@@ -98,21 +107,16 @@ Minor features
 
 * Select2 library is upgraded from version 4.0.7 to 4.0.13.
 
-:mod:`django.contrib.admindocs`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* ...
-
 :mod:`django.contrib.auth`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * The default iteration count for the PBKDF2 password hasher is increased from
   180,000 to 216,000.
 
-* Added the :setting:`PASSWORD_RESET_TIMEOUT` setting to define the number of
-  seconds a password reset link is valid for. This is encouraged instead of
-  deprecated ``PASSWORD_RESET_TIMEOUT_DAYS``, which will be removed in Django
-  4.0.
+* The new :setting:`PASSWORD_RESET_TIMEOUT` setting allows defining the number
+  of seconds a password reset link is valid for. This is encouraged instead of
+  the deprecated ``PASSWORD_RESET_TIMEOUT_DAYS`` setting, which will be removed
+  in Django 4.0.
 
 * The password reset mechanism now uses the SHA-256 hashing algorithm. Support
   for tokens that use the old hashing algorithm remains until Django 4.0.
@@ -141,17 +145,12 @@ Minor features
 * Added the :class:`~django.contrib.gis.db.models.functions.AsWKB` and
   :class:`~django.contrib.gis.db.models.functions.AsWKT` functions.
 
-* Added support for PostGIS 3.
+* Added support for PostGIS 3 and GDAL 3.
 
 :mod:`django.contrib.humanize`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * :tfilter:`intword` template filter now supports negative integers.
-
-:mod:`django.contrib.messages`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* ...
 
 :mod:`django.contrib.postgres`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -166,8 +165,9 @@ Minor features
   :class:`~django.contrib.postgres.fields.RangeField`.
 
 * The new :lookup:`rangefield.lower_inc`, :lookup:`rangefield.lower_inf`,
-  :lookup:`rangefield.upper_inc`, and :lookup:`rangefield.upper_inf` allows
-  querying :class:`~django.contrib.postgres.fields.RangeField` by a bound type.
+  :lookup:`rangefield.upper_inc`, and :lookup:`rangefield.upper_inf` lookups
+  allow querying :class:`~django.contrib.postgres.fields.RangeField` by a bound
+  type.
 
 * :lookup:`rangefield.contained_by` now supports
   :class:`~django.db.models.SmallAutoField`,
@@ -198,11 +198,6 @@ Minor features
 * The new :attr:`.ExclusionConstraint.deferrable` attribute allows creating
   deferrable exclusion constraints.
 
-:mod:`django.contrib.redirects`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* ...
-
 :mod:`django.contrib.sessions`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -210,25 +205,10 @@ Minor features
   value to explicitly state that the cookie is sent with all same-site and
   cross-site requests.
 
-:mod:`django.contrib.sitemaps`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* ...
-
-:mod:`django.contrib.sites`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* ...
-
 :mod:`django.contrib.staticfiles`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * The :setting:`STATICFILES_DIRS` setting now supports :class:`pathlib.Path`.
-
-:mod:`django.contrib.syndication`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* ...
 
 Cache
 ~~~~~
@@ -283,12 +263,6 @@ File Storage
   This allows you to modify the used storage at runtime, selecting different
   storages for different environments, for example.
 
-File Uploads
-~~~~~~~~~~~~
-
-* ...
-
-
 Forms
 ~~~~~
 
@@ -300,21 +274,20 @@ Forms
   details.
 
 * :class:`django.forms.DateTimeField` now accepts dates in a subset of ISO 8601
-  datetime formats, including optional timezone (e.g. ``2019-10-10T06:47``,
-  ``2019-10-10T06:47:23+04:00``, or ``2019-10-10T06:47:23Z``). Additionally, it
-  now uses ``DATE_INPUT_FORMATS`` in addition to ``DATETIME_INPUT_FORMATS``
-  when converting a field input to a ``datetime`` value.
+  datetime formats, including optional timezone, e.g. ``2019-10-10T06:47``,
+  ``2019-10-10T06:47:23+04:00``, or ``2019-10-10T06:47:23Z``. The timezone will
+  always be retained if provided, with timezone-aware datetimes being returned
+  even when :setting:`USE_TZ` is ``False``.
+
+  Additionally, ``DateTimeField`` now uses ``DATE_INPUT_FORMATS`` in addition
+  to ``DATETIME_INPUT_FORMATS`` when converting a field input to a ``datetime``
+  value.
 
 * :attr:`.MultiWidget.widgets` now accepts a dictionary which allows
   customizing subwidget ``name`` attributes.
 
 * The new :attr:`.BoundField.widget_type` property can be used to dynamically
   adjust form rendering based upon the widget type.
-
-Generic Views
-~~~~~~~~~~~~~
-
-* ...
 
 Internationalization
 ~~~~~~~~~~~~~~~~~~~~
@@ -323,12 +296,7 @@ Internationalization
   (string) value to explicitly state that the cookie is sent with all same-site
   and cross-site requests.
 
-* Added support and translations for the Algerian Arabic language.
-
-Logging
-~~~~~~~
-
-* ...
+* Added support and translations for the Algerian Arabic and Kyrgyz languages.
 
 Management Commands
 ~~~~~~~~~~~~~~~~~~~
@@ -446,16 +414,6 @@ Security
   :class:`~django.core.signing.Signer` allows customizing the hashing
   algorithm.
 
-Serialization
-~~~~~~~~~~~~~
-
-* ...
-
-Signals
-~~~~~~~
-
-* ...
-
 Templates
 ~~~~~~~~~
 
@@ -507,11 +465,6 @@ Utilities
   :func:`~django.utils.dateparse.parse_duration`, and
   :func:`~django.utils.dateparse.parse_time` now support comma separators for
   milliseconds.
-
-Validators
-~~~~~~~~~~
-
-* ...
 
 Miscellaneous
 ~~~~~~~~~~~~~
@@ -676,7 +629,7 @@ Miscellaneous
 
 * The undocumented ``django.views.debug.ExceptionReporterFilter`` class is
   removed. As per the :ref:`custom-error-reports` documentation, classes to be
-  used with :setting:`DEFAULT_EXCEPTION_REPORTER_FILTER` needs to inherit from
+  used with :setting:`DEFAULT_EXCEPTION_REPORTER_FILTER` need to inherit from
   :class:`django.views.debug.SafeExceptionReporterFilter`.
 
 * The cache timeout set by :func:`~django.views.decorators.cache.cache_page`
@@ -699,9 +652,9 @@ Miscellaneous
 * The admin CSS classes ``row1`` and ``row2`` are removed in favor of
   ``:nth-child(odd)`` and ``:nth-child(even)`` pseudo-classes.
 
-* The :func:`~django.contrib.auth.hashers.make_password` now requires its
-  argument to be a string or bytes. Other types should be explicitly cast to
-  one of these.
+* The :func:`~django.contrib.auth.hashers.make_password` function now requires
+  its argument to be a string or bytes. Other types should be explicitly cast
+  to one of these.
 
 * The undocumented ``version`` parameter to the
   :class:`~django.contrib.gis.db.models.functions.AsKML` function is removed.
@@ -811,6 +764,13 @@ Miscellaneous
 
 * ``django.conf.urls.url()`` alias of :func:`django.urls.re_path` is
   deprecated.
+
+* The ``{% ifequal %}`` and ``{% ifnotequal %}`` template tags are deprecated
+  in favor of :ttag:`{% if %}<if>`. ``{% if %}`` covers all use cases, but if
+  you need to continue using these tags, they can be extracted from Django to a
+  module and included as a built-in tag in the :class:`'builtins'
+  <django.template.backends.django.DjangoTemplates>` option in
+  :setting:`OPTIONS <TEMPLATES-OPTIONS>`.
 
 .. _removed-features-3.1:
 

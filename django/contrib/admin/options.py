@@ -642,9 +642,9 @@ class ModelAdmin(BaseModelAdmin):
             'jquery.init.js',
             'core.js',
             'admin/RelatedObjectLookups.js',
-            'actions%s.js' % extra,
+            'actions.js',
             'urlify.js',
-            'prepopulate%s.js' % extra,
+            'prepopulate.js',
             'vendor/xregexp/xregexp%s.js' % extra,
         ]
         return forms.Media(js=['admin/js/%s' % url for url in js])
@@ -1071,7 +1071,7 @@ class ModelAdmin(BaseModelAdmin):
                 level = getattr(messages.constants, level.upper())
             except AttributeError:
                 levels = messages.constants.DEFAULT_TAGS.values()
-                levels_repr = ', '.join('`%s`' % l for l in levels)
+                levels_repr = ', '.join('`%s`' % level for level in levels)
                 raise ValueError(
                     'Bad message level string: `%s`. Possible values are: %s'
                     % (level, levels_repr)
@@ -2024,12 +2024,11 @@ class InlineModelAdmin(BaseModelAdmin):
     @property
     def media(self):
         extra = '' if settings.DEBUG else '.min'
-        js = ['vendor/jquery/jquery%s.js' % extra, 'jquery.init.js',
-              'inlines%s.js' % extra]
+        js = ['vendor/jquery/jquery%s.js' % extra, 'jquery.init.js', 'inlines.js']
         if self.filter_vertical or self.filter_horizontal:
             js.extend(['SelectBox.js', 'SelectFilter2.js'])
         if self.classes and 'collapse' in self.classes:
-            js.append('collapse%s.js' % extra)
+            js.append('collapse.js')
         return forms.Media(js=['admin/js/%s' % url for url in js])
 
     def get_extra(self, request, obj=None, **kwargs):

@@ -1,0 +1,284 @@
+============================================
+Django 3.2 release notes - UNDER DEVELOPMENT
+============================================
+
+*Expected April 2021*
+
+Welcome to Django 3.2!
+
+These release notes cover the :ref:`new features <whats-new-3.2>`, as well as
+some :ref:`backwards incompatible changes <backwards-incompatible-3.2>` you'll
+want to be aware of when upgrading from Django 3.1 or earlier. We've
+:ref:`begun the deprecation process for some features
+<deprecated-features-3.2>`.
+
+See the :doc:`/howto/upgrade-version` guide if you're updating an existing
+project.
+
+Django 3.2 is designated as a :term:`long-term support release
+<Long-term support release>`. It will receive security updates for at least
+three years after its release. Support for the previous LTS, Django 2.2, will
+end in April 2022.
+
+Python compatibility
+====================
+
+Django 3.2 supports Python 3.6, 3.7, and 3.8. We **highly recommend** and only
+officially support the latest release of each series.
+
+.. _whats-new-3.2:
+
+What's new in Django 3.2
+========================
+
+Minor features
+--------------
+
+:mod:`django.contrib.admin`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.admindocs`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.auth`
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* The default iteration count for the PBKDF2 password hasher is increased from
+  216,000 to 260,000.
+
+:mod:`django.contrib.contenttypes`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.gis`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.messages`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.postgres`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.redirects`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.sessions`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.sitemaps`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.sites`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.staticfiles`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+:mod:`django.contrib.syndication`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+Cache
+~~~~~
+
+* ...
+
+CSRF
+~~~~
+
+* ...
+
+Email
+~~~~~
+
+* ...
+
+Error Reporting
+~~~~~~~~~~~~~~~
+
+* ...
+
+File Storage
+~~~~~~~~~~~~
+
+* ...
+
+File Uploads
+~~~~~~~~~~~~
+
+* ...
+
+
+Forms
+~~~~~
+
+* ...
+
+Generic Views
+~~~~~~~~~~~~~
+
+* ...
+
+Internationalization
+~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+Logging
+~~~~~~~
+
+* ...
+
+Management Commands
+~~~~~~~~~~~~~~~~~~~
+
+* :djadmin:`loaddata` now supports fixtures stored in XZ archives (``.xz``) and
+  LZMA archives (``.lzma``).
+
+* :djadmin:`makemigrations` can now be called without an active database
+  connection. In that case, check for a consistent migration history is
+  skipped.
+
+* :attr:`.BaseCommand.requires_system_checks` now supports specifying a list of
+  tags. System checks registered in the chosen tags will be checked for errors
+  prior to executing the command. In previous versions, either all or none
+  of the system checks were performed.
+
+Migrations
+~~~~~~~~~~
+
+* ...
+
+Models
+~~~~~~
+
+* The new ``no_key`` parameter for :meth:`.QuerySet.select_for_update()`,
+  supported on PostgreSQL, allows acquiring weaker locks that don't block the
+  creation of rows that reference locked rows through a foreign key.
+
+Requests and Responses
+~~~~~~~~~~~~~~~~~~~~~~
+
+* ...
+
+Security
+~~~~~~~~
+
+* ...
+
+Serialization
+~~~~~~~~~~~~~
+
+* ...
+
+Signals
+~~~~~~~
+
+* ...
+
+Templates
+~~~~~~~~~
+
+* ...
+
+Tests
+~~~~~
+
+* Objects assigned to class attributes in :meth:`.TestCase.setUpTestData` are
+  now isolated for each test method. Such objects are now required to support
+  creating deep copies with :py:func:`copy.deepcopy`. Assigning objects which
+  don't support ``deepcopy()`` is deprecated and will be removed in Django 4.1.
+
+URLs
+~~~~
+
+* ...
+
+Utilities
+~~~~~~~~~
+
+* ...
+
+Validators
+~~~~~~~~~~
+
+* ...
+
+.. _backwards-incompatible-3.2:
+
+Backwards incompatible changes in 3.2
+=====================================
+
+Database backend API
+--------------------
+
+This section describes changes that may be needed in third-party database
+backends.
+
+* ...
+
+:mod:`django.contrib.gis`
+-------------------------
+
+* Support for PostGIS 2.2 is removed.
+
+Dropped support for PostgreSQL 9.5
+----------------------------------
+
+Upstream support for PostgreSQL 9.5 ends in February 2021. Django 3.2 supports
+PostgreSQL 9.6 and higher.
+
+Dropped support for MySQL 5.6
+-----------------------------
+
+The end of upstream support for MySQL 5.6 is April 2021. Django 3.2 supports
+MySQL 5.7 and higher.
+
+Miscellaneous
+-------------
+
+* The undocumented ``SpatiaLiteOperations.proj4_version()`` method is renamed
+  to ``proj_version()``.
+
+* Minified JavaScript files are no longer included with the admin. If you
+  require these files to be minified, consider using a third party app or
+  external build tool. The minified vendored JavaScript files packaged with the
+  admin (e.g. :ref:`jquery.min.js <contrib-admin-jquery>`) are still included.
+
+.. _deprecated-features-3.2:
+
+Features deprecated in 3.2
+==========================
+
+Miscellaneous
+-------------
+
+* Assigning objects which don't support creating deep copies with
+  :py:func:`copy.deepcopy` to class attributes in
+  :meth:`.TestCase.setUpTestData` is deprecated.
+
+* Using a boolean value in :attr:`.BaseCommand.requires_system_checks` is
+  deprecated. Use ``'__all__'`` instead of ``True``, and ``[]`` (an empty list)
+  instead of ``False``.

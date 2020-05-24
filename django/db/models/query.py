@@ -9,6 +9,7 @@ from collections import namedtuple
 from functools import lru_cache
 from itertools import chain
 
+import django
 from django.conf import settings
 from django.core import exceptions
 from django.db import (
@@ -25,7 +26,6 @@ from django.db.models.sql.constants import CURSOR, GET_ITERATOR_CHUNK_SIZE
 from django.db.models.utils import resolve_callables
 from django.utils import timezone
 from django.utils.functional import cached_property, partition
-from django.utils.version import get_version
 
 # The maximum number of results to fetch in a get() query.
 MAX_GET_RESULTS = 21
@@ -238,24 +238,25 @@ class QuerySet:
     def __getstate__(self):
         # Force the cache to be fully populated.
         self._fetch_all()
-        return {**self.__dict__, DJANGO_VERSION_PICKLE_KEY: get_version()}
+        return {**self.__dict__, DJANGO_VERSION_PICKLE_KEY: django.__version__}
 
     def __setstate__(self, state):
-        msg = None
         pickled_version = state.get(DJANGO_VERSION_PICKLE_KEY)
         if pickled_version:
-            current_version = get_version()
-            if current_version != pickled_version:
-                msg = (
+            if pickled_version != django.__version__:
+                warnings.warn(
                     "Pickled queryset instance's Django version %s does not "
-                    "match the current version %s." % (pickled_version, current_version)
+                    "match the current version %s."
+                    % (pickled_version, django.__version__),
+                    RuntimeWarning,
+                    stacklevel=2,
                 )
         else:
-            msg = "Pickled queryset instance's Django version is not specified."
-
-        if msg:
-            warnings.warn(msg, RuntimeWarning, stacklevel=2)
-
+            warnings.warn(
+                "Pickled queryset instance's Django version is not specified.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         self.__dict__.update(state)
 
     def __repr__(self):
@@ -1017,7 +1018,7 @@ class QuerySet:
             return self
         return self._combinator_query('difference', *other_qs)
 
-    def select_for_update(self, nowait=False, skip_locked=False, of=()):
+    def select_for_update(self, nowait=False, skip_locked=False, of=(), no_key=False):
         """
         Return a new QuerySet instance that will select objects with a
         FOR UPDATE lock.
@@ -1030,6 +1031,7 @@ class QuerySet:
         obj.query.select_for_update_nowait = nowait
         obj.query.select_for_update_skip_locked = skip_locked
         obj.query.select_for_update_of = of
+        obj.query.select_for_no_key_update = no_key
         return obj
 
     def select_related(self, *fields):
@@ -1137,6 +1139,7 @@ class QuerySet:
         """
         Return a new QuerySet instance that will select only distinct results.
         """
+        self._not_support_combined_queries('distinct')
         assert not self.query.is_sliced, \
             "Cannot create distinct fields once a slice has been taken."
         obj = self._chain()

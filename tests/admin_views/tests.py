@@ -969,6 +969,11 @@ class AdminViewBasicTest(AdminViewBasicTestCase):
         self.assertEqual(response.context['site_url'], '/my-site-url/')
         self.assertContains(response, '<a href="/my-site-url/">View site</a>')
 
+    def test_date_hierarchy_empty_queryset(self):
+        self.assertIs(Question.objects.exists(), False)
+        response = self.client.get(reverse('admin:admin_views_answer2_changelist'))
+        self.assertEqual(response.status_code, 200)
+
     @override_settings(TIME_ZONE='America/Sao_Paulo', USE_TZ=True)
     def test_date_hierarchy_timezone_dst(self):
         # This datetime doesn't exist in this timezone due to DST.
@@ -1229,26 +1234,18 @@ class AdminJavaScriptTest(TestCase):
             response = self.client.get(reverse('admin:admin_views_section_add'))
             self.assertNotContains(response, 'vendor/jquery/jquery.js')
             self.assertContains(response, 'vendor/jquery/jquery.min.js')
-            self.assertNotContains(response, 'prepopulate.js')
-            self.assertContains(response, 'prepopulate.min.js')
-            self.assertNotContains(response, 'actions.js')
-            self.assertContains(response, 'actions.min.js')
-            self.assertNotContains(response, 'collapse.js')
-            self.assertContains(response, 'collapse.min.js')
-            self.assertNotContains(response, 'inlines.js')
-            self.assertContains(response, 'inlines.min.js')
+            self.assertContains(response, 'prepopulate.js')
+            self.assertContains(response, 'actions.js')
+            self.assertContains(response, 'collapse.js')
+            self.assertContains(response, 'inlines.js')
         with override_settings(DEBUG=True):
             response = self.client.get(reverse('admin:admin_views_section_add'))
             self.assertContains(response, 'vendor/jquery/jquery.js')
             self.assertNotContains(response, 'vendor/jquery/jquery.min.js')
             self.assertContains(response, 'prepopulate.js')
-            self.assertNotContains(response, 'prepopulate.min.js')
             self.assertContains(response, 'actions.js')
-            self.assertNotContains(response, 'actions.min.js')
             self.assertContains(response, 'collapse.js')
-            self.assertNotContains(response, 'collapse.min.js')
             self.assertContains(response, 'inlines.js')
-            self.assertNotContains(response, 'inlines.min.js')
 
 
 @override_settings(ROOT_URLCONF='admin_views.urls')
@@ -1425,6 +1422,7 @@ def get_perm(Model, codename):
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -2424,6 +2422,7 @@ class AdminViewPermissionsTest(TestCase):
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -5030,7 +5029,7 @@ class RawIdFieldsTest(TestCase):
         # Find the link
         m = re.search(br'<a href="([^"]*)"[^>]* id="lookup_id_inquisition"', response.content)
         self.assertTrue(m)  # Got a match
-        popup_url = m.groups()[0].decode().replace("&amp;", "&")
+        popup_url = m[1].decode().replace('&amp;', '&')
 
         # Handle relative links
         popup_url = urljoin(response.request['PATH_INFO'], popup_url)
@@ -5053,7 +5052,7 @@ class RawIdFieldsTest(TestCase):
         # Find the link
         m = re.search(br'<a href="([^"]*)"[^>]* id="lookup_id_defendant0"', response.content)
         self.assertTrue(m)  # Got a match
-        popup_url = m.groups()[0].decode().replace("&amp;", "&")
+        popup_url = m[1].decode().replace('&amp;', '&')
 
         # Handle relative links
         popup_url = urljoin(response.request['PATH_INFO'], popup_url)
@@ -5073,7 +5072,7 @@ class RawIdFieldsTest(TestCase):
         # Find the link
         m = re.search(br'<a href="([^"]*)"[^>]* id="lookup_id_defendant1"', response.content)
         self.assertTrue(m)  # Got a match
-        popup_url = m.groups()[0].decode().replace("&amp;", "&")
+        popup_url = m[1].decode().replace('&amp;', '&')
 
         # Handle relative links
         popup_url = urljoin(response.request['PATH_INFO'], popup_url)
@@ -5340,13 +5339,13 @@ class CSSTest(TestCase):
         """
         # General index page
         response = self.client.get(reverse('admin:index'))
-        self.assertContains(response, '<div class="app-admin_views module">')
+        self.assertContains(response, '<div class="app-admin_views module')
         self.assertContains(response, '<tr class="model-actor">')
         self.assertContains(response, '<tr class="model-album">')
 
         # App index page
         response = self.client.get(reverse('admin:app_list', args=('admin_views',)))
-        self.assertContains(response, '<div class="app-admin_views module">')
+        self.assertContains(response, '<div class="app-admin_views module')
         self.assertContains(response, '<tr class="model-actor">')
         self.assertContains(response, '<tr class="model-album">')
 
@@ -5924,7 +5923,7 @@ class AdminKeepChangeListFiltersTests(TestCase):
             '<a href="(.*?)">{}</a>'.format(self.joepublicuser.username),
             response.content.decode()
         )
-        self.assertURLEqual(detail_link.group(1), self.get_change_url())
+        self.assertURLEqual(detail_link[1], self.get_change_url())
 
     def test_change_view(self):
         # Get the `change_view`.
@@ -5936,21 +5935,21 @@ class AdminKeepChangeListFiltersTests(TestCase):
             '<form action="(.*?)" method="post" id="user_form" novalidate>',
             response.content.decode()
         )
-        self.assertURLEqual(form_action.group(1), '?%s' % self.get_preserved_filters_querystring())
+        self.assertURLEqual(form_action[1], '?%s' % self.get_preserved_filters_querystring())
 
         # Check the history link.
         history_link = re.search(
             '<a href="(.*?)" class="historylink">History</a>',
             response.content.decode()
         )
-        self.assertURLEqual(history_link.group(1), self.get_history_url())
+        self.assertURLEqual(history_link[1], self.get_history_url())
 
         # Check the delete link.
         delete_link = re.search(
             '<a href="(.*?)" class="deletelink">Delete</a>',
             response.content.decode()
         )
-        self.assertURLEqual(delete_link.group(1), self.get_delete_url())
+        self.assertURLEqual(delete_link[1], self.get_delete_url())
 
         # Test redirect on "Save".
         post_data = {
@@ -5993,7 +5992,7 @@ class AdminKeepChangeListFiltersTests(TestCase):
             '<form action="(.*?)" method="post" id="user_form" novalidate>',
             response.content.decode()
         )
-        self.assertURLEqual(form_action.group(1), '?%s' % self.get_preserved_filters_querystring())
+        self.assertURLEqual(form_action[1], '?%s' % self.get_preserved_filters_querystring())
 
         post_data = {
             'username': 'dummy',
@@ -6147,7 +6146,7 @@ class AdminViewOnSiteTests(TestCase):
             response, 'inline_admin_formset', 0, None,
             ['Children must share a family name with their parents in this contrived test case']
         )
-        msg = "The formset 'inline_admin_formset' in context 10 does not contain any non-form errors."
+        msg = "The formset 'inline_admin_formset' in context 12 does not contain any non-form errors."
         with self.assertRaisesMessage(AssertionError, msg):
             self.assertFormsetError(response, 'inline_admin_formset', None, None, ['Error'])
 

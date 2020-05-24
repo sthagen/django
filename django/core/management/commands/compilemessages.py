@@ -29,7 +29,7 @@ def is_writable(path):
 class Command(BaseCommand):
     help = 'Compiles .po files to .mo files for use with builtin gettext support.'
 
-    requires_system_checks = False
+    requires_system_checks = []
 
     program = 'msgfmt'
     program_options = ['--check-format']
@@ -101,7 +101,7 @@ class Command(BaseCommand):
         self.has_errors = False
         for basedir in basedirs:
             if locales:
-                dirs = [os.path.join(basedir, l, 'LC_MESSAGES') for l in locales]
+                dirs = [os.path.join(basedir, locale, 'LC_MESSAGES') for locale in locales]
             else:
                 dirs = [basedir]
             locations = []

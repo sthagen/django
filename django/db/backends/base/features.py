@@ -38,6 +38,7 @@ class BaseDatabaseFeatures:
     has_select_for_update_nowait = False
     has_select_for_update_skip_locked = False
     has_select_for_update_of = False
+    has_select_for_no_key_update = False
     # Does the database's SELECT FOR UPDATE OF syntax require a column rather
     # than a table?
     select_for_update_of_column = False
@@ -297,7 +298,8 @@ class BaseDatabaseFeatures:
     # field(s)?
     allows_multiple_constraints_on_same_fields = True
 
-    # Does the backend support boolean expressions in the SELECT clause?
+    # Does the backend support boolean expressions in SELECT and GROUP BY
+    # clauses?
     supports_boolean_expr_in_select_clause = True
 
     # Does the backend support JSONField?
@@ -308,6 +310,8 @@ class BaseDatabaseFeatures:
     supports_primitives_in_json_field = True
     # Is there a true datatype for JSON?
     has_native_json_field = False
+    # Does the backend use PostgreSQL-style JSON operators like '->'?
+    has_json_operators = False
 
     def __init__(self, connection):
         self.connection = connection

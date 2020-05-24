@@ -32,7 +32,7 @@ features include:
   in Python using ``ctypes``.
 * Loosely-coupled to GeoDjango.  For example, :class:`GEOSGeometry` objects
   may be used outside of a Django project/application.  In other words,
-  no need to have ``DJANGO_SETTINGS_MODULE`` set or use a database, etc.
+  no need to have :envvar:`DJANGO_SETTINGS_MODULE` set or use a database, etc.
 * Mutability: :class:`GEOSGeometry` objects may be modified.
 * Cross-platform and tested; compatible with Windows, Linux, Solaris, and
   macOS platforms.
@@ -642,12 +642,11 @@ Other Properties & Methods
 
     Transforms the geometry according to the given coordinate transformation
     parameter (``ct``), which may be an integer SRID, spatial reference WKT
-    string, a PROJ.4 string, a
-    :class:`~django.contrib.gis.gdal.SpatialReference` object, or a
-    :class:`~django.contrib.gis.gdal.CoordTransform` object. By default, the
-    geometry is transformed in-place and nothing is returned. However if the
-    ``clone`` keyword is set, then the geometry is not modified and a
-    transformed clone of the geometry is returned instead.
+    string, a PROJ string, a :class:`~django.contrib.gis.gdal.SpatialReference`
+    object, or a :class:`~django.contrib.gis.gdal.CoordTransform` object. By
+    default, the geometry is transformed in-place and nothing is returned.
+    However if the ``clone`` keyword is set, then the geometry is not modified
+    and a transformed clone of the geometry is returned instead.
 
     .. note::
 

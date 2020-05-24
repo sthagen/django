@@ -28,7 +28,7 @@ class GeometryFieldTest(SimpleTestCase):
         # Making the field in a different SRID from that of the geometry, and
         # asserting it transforms.
         fld = forms.GeometryField(srid=32140)
-        tol = 0.0000001
+        tol = 0.0001
         xform_geom = GEOSGeometry('POINT (951640.547328465 4219369.26171664)', srid=32140)
         # The cleaned geometry is transformed to 32140 (the widget map_srid is 3857).
         cleaned_geom = fld.clean('SRID=3857;POINT (-10615777.40976205 3473169.895707852)')
@@ -136,7 +136,7 @@ class GeometryFieldTest(SimpleTestCase):
 
         # The first point can't use assertInHTML() due to non-deterministic
         # ordering of the rendered dictionary.
-        pt1_serialized = re.search(r'<textarea [^>]*>({[^<]+})<', output).groups()[0]
+        pt1_serialized = re.search(r'<textarea [^>]*>({[^<]+})<', output)[1]
         pt1_json = pt1_serialized.replace('&quot;', '"')
         pt1_expected = GEOSGeometry(form.data['pt1']).transform(3857, clone=True)
         self.assertJSONEqual(pt1_json, pt1_expected.json)

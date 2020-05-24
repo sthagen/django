@@ -34,17 +34,24 @@ If you're not using the default project template, here are the requirements:
 
 #. Configure a :class:`~django.template.backends.django.DjangoTemplates`
    backend in your :setting:`TEMPLATES` setting with
-   ``django.contrib.auth.context_processors.auth`` and
+   ``django.contrib.auth.context_processors.auth``,
+   ``django.contrib.messages.context_processors.request``, and
    ``django.contrib.messages.context_processors.messages`` in
    the ``'context_processors'`` option of :setting:`OPTIONS
    <TEMPLATES-OPTIONS>`.
+
+   .. versionchanged:: 3.1
+
+       ``django.contrib.messages.context_processors.request`` was added as a
+       requirement in the ``'context_processors'`` option to support the new
+       :attr:`.AdminSite.enable_nav_sidebar`.
 
 #. If you've customized the :setting:`MIDDLEWARE` setting,
    :class:`django.contrib.auth.middleware.AuthenticationMiddleware` and
    :class:`django.contrib.messages.middleware.MessageMiddleware` must be
    included.
 
-5. :ref:`Hook the admin's URLs into your URLconf
+#. :ref:`Hook the admin's URLs into your URLconf
    <hooking-adminsite-to-urlconf>`.
 
 After you've taken these steps, you'll be able to use the admin site by
@@ -1649,8 +1656,6 @@ templates used by the :class:`ModelAdmin` views:
 
 .. method:: ModelAdmin.get_inlines(request, obj)
 
-    .. versionadded:: 3.0
-
     The ``get_inlines`` method is given the ``HttpRequest`` and the
     ``obj`` being edited (or ``None`` on an add form) and is expected to return
     an iterable of inlines. You can override this method to dynamically add
@@ -2150,10 +2155,6 @@ To avoid conflicts with user-supplied scripts or libraries, Django's jQuery
 (version 3.5.1) is namespaced as ``django.jQuery``. If you want to use jQuery
 in your own admin JavaScript without including a second copy, you can use the
 ``django.jQuery`` object on changelist and add/edit views.
-
-.. versionchanged:: 3.0
-
-    jQuery was upgraded from 3.3.1 to 3.4.1.
 
 .. versionchanged:: 3.1
 
@@ -2840,6 +2841,13 @@ Templates can override or extend base admin templates as described in
     ``ModelAdmin`` basis and on a custom field within a ``ModelAdmin`` by
     setting an ``empty_value_display`` attribute on the field. See
     :attr:`ModelAdmin.empty_value_display` for examples.
+
+.. attribute:: AdminSite.enable_nav_sidebar
+
+    .. versionadded:: 3.1
+
+    A boolean value that determines whether to show the navigation sidebar
+    on larger screens. By default, it is set to ``True``.
 
 .. attribute:: AdminSite.login_template
 

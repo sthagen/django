@@ -3,8 +3,9 @@ from decimal import Decimal
 
 from django.core.exceptions import FieldDoesNotExist, FieldError
 from django.db.models import (
-    BooleanField, CharField, Count, DateTimeField, ExpressionWrapper, F, Func,
-    IntegerField, NullBooleanField, OuterRef, Q, Subquery, Sum, Value,
+    BooleanField, CharField, Count, DateTimeField, Exists, ExpressionWrapper,
+    F, Func, IntegerField, Max, NullBooleanField, OuterRef, Q, Subquery, Sum,
+    Value,
 )
 from django.db.models.expressions import RawSQL
 from django.db.models.functions import Length, Lower
@@ -619,3 +620,15 @@ class NonAggregateAnnotationTestCase(TestCase):
             total_books=Subquery(long_books_qs, output_field=IntegerField()),
         ).values('name')
         self.assertCountEqual(publisher_books_qs, [{'name': 'Sams'}, {'name': 'Morgan Kaufmann'}])
+
+    def test_annotation_exists_aggregate_values_chaining(self):
+        qs = Book.objects.values('publisher').annotate(
+            has_authors=Exists(Book.authors.through.objects.filter(book=OuterRef('pk'))),
+            max_pubdate=Max('pubdate'),
+        ).values_list('max_pubdate', flat=True).order_by('max_pubdate')
+        self.assertCountEqual(qs, [
+            datetime.date(1991, 10, 15),
+            datetime.date(2008, 3, 3),
+            datetime.date(2008, 6, 23),
+            datetime.date(2008, 11, 3),
+        ])
