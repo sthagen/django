@@ -63,7 +63,9 @@ Minor features
 :mod:`django.contrib.messages`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* The :class:`~django.contrib.postgres.operations.CreateExtension` operation
+  now checks that the extension already exists in the database and skips the
+  migration if so.
 
 :mod:`django.contrib.postgres`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -169,7 +171,9 @@ Management Commands
 Migrations
 ~~~~~~~~~~
 
-* ...
+* The new ``Operation.migration_name_fragment`` property allows providing a
+  filename fragment that will be used to name a migration containing only that
+  operation.
 
 Models
 ~~~~~~
@@ -177,6 +181,9 @@ Models
 * The new ``no_key`` parameter for :meth:`.QuerySet.select_for_update()`,
   supported on PostgreSQL, allows acquiring weaker locks that don't block the
   creation of rows that reference locked rows through a foreign key.
+
+* :class:`When() <django.db.models.expressions.When>` expression now allows
+  using the ``condition`` argument with ``lookups``.
 
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -210,6 +217,9 @@ Tests
   now isolated for each test method. Such objects are now required to support
   creating deep copies with :py:func:`copy.deepcopy`. Assigning objects which
   don't support ``deepcopy()`` is deprecated and will be removed in Django 4.1.
+
+* :class:`~django.test.Client` now preserves the request query string when
+  following 307 and 308 redirects.
 
 URLs
 ~~~~
@@ -266,6 +276,12 @@ Miscellaneous
   require these files to be minified, consider using a third party app or
   external build tool. The minified vendored JavaScript files packaged with the
   admin (e.g. :ref:`jquery.min.js <contrib-admin-jquery>`) are still included.
+
+* :attr:`.ModelAdmin.prepopulated_fields` no longer strips English stop words,
+  such as ``'a'`` or ``'an'``.
+
+* :func:`~django.utils.text.slugify` now removes leading and trailing dashes
+  and underscores.
 
 .. _deprecated-features-3.2:
 
