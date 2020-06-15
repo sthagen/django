@@ -1710,7 +1710,7 @@ to refer to the queryset's model.
 
 On PostgreSQL only, you can pass ``no_key=True`` in order to acquire a weaker
 lock, that still allows creating rows that merely reference locked rows
-(through a foreign key, for example) whilst the lock is in place. The
+(through a foreign key, for example) while the lock is in place. The
 PostgreSQL documentation has more details about `row-level lock modes
 <https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-ROWS>`_.
 
@@ -2118,6 +2118,17 @@ parameter to ``True`` tells the database to ignore failure to insert any rows
 that fail constraints such as duplicate unique values. Enabling this parameter
 disables setting the primary key on each model instance (if the database
 normally supports it).
+
+.. warning::
+
+    On MySQL and MariaDB, setting the ``ignore_conflicts`` parameter to
+    ``True`` turns certain types of errors, other than duplicate key, into
+    warnings. Even with Strict Mode. For example: invalid values or
+    non-nullable violations. See the `MySQL documentation`_ and
+    `MariaDB documentation`_ for more details.
+
+.. _MySQL documentation: https://dev.mysql.com/doc/refman/en/sql-mode.html#ignore-strict-comparison
+.. _MariaDB documentation: https://mariadb.com/kb/en/ignore/
 
 Returns ``objs`` as cast to a list, in the same order as provided.
 

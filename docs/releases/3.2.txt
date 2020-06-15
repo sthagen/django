@@ -70,7 +70,11 @@ Minor features
 :mod:`django.contrib.postgres`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* The new :attr:`.ExclusionConstraint.include` attribute allows creating
+  covering exclusion constraints on PostgreSQL 12+.
+
+* The new :attr:`.JSONBAgg.ordering` attribute determines the ordering of the
+  aggregated elements.
 
 :mod:`django.contrib.redirects`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,7 +140,10 @@ File Uploads
 Forms
 ~~~~~
 
-* ...
+* The new ``absolute_max`` argument for :func:`.formset_factory`,
+  :func:`.inlineformset_factory`, and :func:`.modelformset_factory` allows
+  customizing the maximum number of forms that can be instantiated when
+  supplying ``POST`` data. See :ref:`formsets-absolute-max` for more details.
 
 Generic Views
 ~~~~~~~~~~~~~
@@ -184,6 +191,10 @@ Models
 
 * :class:`When() <django.db.models.expressions.When>` expression now allows
   using the ``condition`` argument with ``lookups``.
+
+* The new :attr:`.Index.include` and :attr:`.UniqueConstraint.include`
+  attributes allow creating covering indexes and covering unique constraints on
+  PostgreSQL 11+.
 
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -247,7 +258,25 @@ Database backend API
 This section describes changes that may be needed in third-party database
 backends.
 
-* ...
+* The new ``DatabaseFeatures.introspected_field_types`` property replaces these
+  features:
+
+  * ``can_introspect_autofield``
+  * ``can_introspect_big_integer_field``
+  * ``can_introspect_binary_field``
+  * ``can_introspect_decimal_field``
+  * ``can_introspect_duration_field``
+  * ``can_introspect_ip_address_field``
+  * ``can_introspect_positive_integer_field``
+  * ``can_introspect_small_integer_field``
+  * ``can_introspect_time_field``
+  * ``introspected_big_auto_field_type``
+  * ``introspected_small_auto_field_type``
+  * ``introspected_boolean_field_type``
+
+* To enable support for covering indexes (:attr:`.Index.include`) and covering
+  unique constraints (:attr:`.UniqueConstraint.include`), set
+  ``DatabaseFeatures.supports_covering_indexes`` to ``True``.
 
 :mod:`django.contrib.gis`
 -------------------------
@@ -282,6 +311,9 @@ Miscellaneous
 
 * :func:`~django.utils.text.slugify` now removes leading and trailing dashes
   and underscores.
+
+* The :tfilter:`intcomma` and :tfilter:`intword` template filters no longer
+  depend on the :setting:`USE_L10N` setting.
 
 .. _deprecated-features-3.2:
 

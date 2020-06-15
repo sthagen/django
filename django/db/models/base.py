@@ -91,7 +91,7 @@ class ModelBase(type):
         # method to type.__new__() so that they're properly initialized
         # (i.e. __set_name__()).
         contributable_attrs = {}
-        for obj_name, obj in list(attrs.items()):
+        for obj_name, obj in attrs.items():
             if _has_contribute_to_class(obj):
                 contributable_attrs[obj_name] = obj
             else:
@@ -1614,12 +1614,10 @@ class Model(metaclass=ModelBase):
             if not router.allow_migrate_model(db, cls):
                 continue
             connection = connections[db]
-            if (
+            if not (
                 connection.features.supports_partial_indexes or
                 'supports_partial_indexes' in cls._meta.required_db_features
-            ):
-                continue
-            if any(index.condition is not None for index in cls._meta.indexes):
+            ) and any(index.condition is not None for index in cls._meta.indexes):
                 errors.append(
                     checks.Warning(
                         '%s does not support indexes with conditions.'
@@ -1632,7 +1630,24 @@ class Model(metaclass=ModelBase):
                         id='models.W037',
                     )
                 )
+            if not (
+                connection.features.supports_covering_indexes or
+                'supports_covering_indexes' in cls._meta.required_db_features
+            ) and any(index.include for index in cls._meta.indexes):
+                errors.append(
+                    checks.Warning(
+                        '%s does not support indexes with non-key columns.'
+                        % connection.display_name,
+                        hint=(
+                            "Non-key columns will be ignored. Silence this "
+                            "warning if you don't care about it."
+                        ),
+                        obj=cls,
+                        id='models.W040',
+                    )
+                )
         fields = [field for index in cls._meta.indexes for field, _ in index.fields_orders]
+        fields += [include for index in cls._meta.indexes for include in index.include]
         errors.extend(cls._check_local_fields(fields, 'indexes'))
         return errors
 
@@ -1926,10 +1941,28 @@ class Model(metaclass=ModelBase):
                         id='models.W038',
                     )
                 )
-            fields = (
-                field
+            if not (
+                connection.features.supports_covering_indexes or
+                'supports_covering_indexes' in cls._meta.required_db_features
+            ) and any(
+                isinstance(constraint, UniqueConstraint) and constraint.include
+                for constraint in cls._meta.constraints
+            ):
+                errors.append(
+                    checks.Warning(
+                        '%s does not support unique constraints with non-key '
+                        'columns.' % connection.display_name,
+                        hint=(
+                            "A constraint won't be created. Silence this "
+                            "warning if you don't care about it."
+                        ),
+                        obj=cls,
+                        id='models.W039',
+                    )
+                )
+            fields = chain.from_iterable(
+                (*constraint.fields, *constraint.include)
                 for constraint in cls._meta.constraints if isinstance(constraint, UniqueConstraint)
-                for field in constraint.fields
             )
             errors.extend(cls._check_local_fields(fields, 'constraints'))
         return errors
