@@ -37,7 +37,8 @@ Minor features
 :mod:`django.contrib.admin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* :attr:`.ModelAdmin.search_fields` now allows searching against quoted phrases
+  with spaces.
 
 :mod:`django.contrib.admindocs`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,6 +50,15 @@ Minor features
 
 * The default iteration count for the PBKDF2 password hasher is increased from
   216,000 to 260,000.
+
+* The default variant for the Argon2 password hasher is changed to Argon2id.
+  ``memory_cost`` and ``parallelism`` are increased to 102,400 and 8
+  respectively to match the ``argon2-cffi`` defaults.
+
+  Increasing the ``memory_cost`` pushes the required memory from 512 KB to 100
+  MB. This is still rather conservative but can lead to problems in memory
+  constrained environments. If this is the case, the existing hasher can be
+  subclassed to override the defaults.
 
 :mod:`django.contrib.contenttypes`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -72,6 +82,9 @@ Minor features
 
 * The new :attr:`.ExclusionConstraint.include` attribute allows creating
   covering exclusion constraints on PostgreSQL 12+.
+
+* The new :attr:`.ExclusionConstraint.opclasses` attribute allows setting
+  PostgreSQL operator classes.
 
 * The new :attr:`.JSONBAgg.ordering` attribute determines the ordering of the
   aggregated elements.
@@ -196,6 +209,9 @@ Models
   attributes allow creating covering indexes and covering unique constraints on
   PostgreSQL 11+.
 
+* The new :attr:`.UniqueConstraint.opclasses` attribute allows setting
+  PostgreSQL operator classes.
+
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -209,7 +225,10 @@ Security
 Serialization
 ~~~~~~~~~~~~~
 
-* ...
+* The new :ref:`JSONL <serialization-formats-jsonl>` serializer allows using
+  the JSON Lines format with :djadmin:`dumpdata` and :djadmin:`loaddata`. This
+  can be useful for populating large databases because data is loaded line by
+  line into memory, rather than being loaded all at once.
 
 Signals
 ~~~~~~~
@@ -315,6 +334,8 @@ Miscellaneous
 * The :tfilter:`intcomma` and :tfilter:`intword` template filters no longer
   depend on the :setting:`USE_L10N` setting.
 
+* Support for ``argon2-cffi`` < 19.1.0 is removed.
+
 .. _deprecated-features-3.2:
 
 Features deprecated in 3.2
@@ -330,3 +351,9 @@ Miscellaneous
 * Using a boolean value in :attr:`.BaseCommand.requires_system_checks` is
   deprecated. Use ``'__all__'`` instead of ``True``, and ``[]`` (an empty list)
   instead of ``False``.
+
+* The ``whitelist`` argument and ``domain_whitelist`` attribute of
+  :class:`~django.core.validators.EmailValidator` are deprecated. Use
+  ``allowlist`` instead of ``whitelist``, and ``domain_allowlist`` instead of
+  ``domain_whitelist``. You may need to rename ``whitelist`` in existing
+  migrations.
