@@ -158,10 +158,18 @@ Forms
   customizing the maximum number of forms that can be instantiated when
   supplying ``POST`` data. See :ref:`formsets-absolute-max` for more details.
 
+* The new ``can_delete_extra`` argument for :func:`.formset_factory`,
+  :func:`.inlineformset_factory`, and :func:`.modelformset_factory` allows
+  removal of the option to delete extra forms. See
+  :attr:`~.BaseFormSet.can_delete_extra` for more information.
+
 Generic Views
 ~~~~~~~~~~~~~
 
-* ...
+* The ``week_format`` attributes of
+  :class:`~django.views.generic.dates.WeekMixin` and
+  :class:`~django.views.generic.dates.WeekArchiveView` now support the
+  ``'%V'`` ISO 8601 week format.
 
 Internationalization
 ~~~~~~~~~~~~~~~~~~~~
@@ -194,6 +202,9 @@ Migrations
 * The new ``Operation.migration_name_fragment`` property allows providing a
   filename fragment that will be used to name a migration containing only that
   operation.
+
+* Migrations now support serialization of pure and concrete path objects from
+  :mod:`pathlib`, and :class:`os.PathLike` instances.
 
 Models
 ~~~~~~
@@ -335,6 +346,16 @@ Miscellaneous
   depend on the :setting:`USE_L10N` setting.
 
 * Support for ``argon2-cffi`` < 19.1.0 is removed.
+
+* The cache keys no longer includes the language when internationalization is
+  disabled (``USE_I18N = False``) and localization is enabled
+  (``USE_L10N = True``). After upgrading to Django 3.2 in such configurations,
+  the first request to any previously cached value will be a cache miss.
+
+* ``ForeignKey.validate()`` now uses
+  :attr:`~django.db.models.Model._base_manager` rather than
+  :attr:`~django.db.models.Model._default_manager` to check that related
+  instances exist.
 
 .. _deprecated-features-3.2:
 

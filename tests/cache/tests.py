@@ -621,6 +621,20 @@ class BaseCacheTests:
     def test_zero_cull(self):
         self._perform_cull_test('zero_cull', 50, 19)
 
+    def test_cull_delete_when_store_empty(self):
+        try:
+            cull_cache = caches['cull']
+        except InvalidCacheBackendError:
+            self.skipTest("Culling isn't implemented.")
+        old_max_entries = cull_cache._max_entries
+        # Force _cull to delete on first cached record.
+        cull_cache._max_entries = -1
+        try:
+            cull_cache.set('force_cull_delete', 'value', 1000)
+            self.assertIs(cull_cache.has_key('force_cull_delete'), True)
+        finally:
+            cull_cache._max_entries = old_max_entries
+
     def _perform_invalid_key_test(self, key, expected_warning):
         """
         All the builtin backends should warn (except memcached that should
@@ -1802,7 +1816,7 @@ class CacheI18nTest(SimpleTestCase):
     def tearDown(self):
         cache.clear()
 
-    @override_settings(USE_I18N=True, USE_L10N=False, USE_TZ=False)
+    @override_settings(USE_I18N=True, USE_TZ=False)
     def test_cache_key_i18n_translation(self):
         request = self.factory.get(self.path)
         lang = translation.get_language()
@@ -1823,7 +1837,7 @@ class CacheI18nTest(SimpleTestCase):
         self.assertEqual(key, reference_key)
         self.assertEqual(key2, reference_key)
 
-    @override_settings(USE_I18N=True, USE_L10N=False, USE_TZ=False)
+    @override_settings(USE_I18N=True, USE_TZ=False)
     def test_cache_key_i18n_translation_accept_language(self):
         lang = translation.get_language()
         self.assertEqual(lang, 'en')
@@ -1879,17 +1893,7 @@ class CacheI18nTest(SimpleTestCase):
             key
         )
 
-    @override_settings(USE_I18N=False, USE_L10N=True, USE_TZ=False)
-    def test_cache_key_i18n_formatting(self):
-        request = self.factory.get(self.path)
-        lang = translation.get_language()
-        response = HttpResponse()
-        key = learn_cache_key(request, response)
-        self.assertIn(lang, key, "Cache keys should include the language name when formatting is active")
-        key2 = get_cache_key(request)
-        self.assertEqual(key, key2)
-
-    @override_settings(USE_I18N=False, USE_L10N=False, USE_TZ=True)
+    @override_settings(USE_I18N=False, USE_TZ=True)
     def test_cache_key_i18n_timezone(self):
         request = self.factory.get(self.path)
         tz = timezone.get_current_timezone_name()
@@ -1899,7 +1903,7 @@ class CacheI18nTest(SimpleTestCase):
         key2 = get_cache_key(request)
         self.assertEqual(key, key2)
 
-    @override_settings(USE_I18N=False, USE_L10N=False)
+    @override_settings(USE_I18N=False)
     def test_cache_key_no_i18n(self):
         request = self.factory.get(self.path)
         lang = translation.get_language()
