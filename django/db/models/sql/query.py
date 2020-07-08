@@ -305,6 +305,7 @@ class Query(BaseExpression):
             obj.annotation_select_mask = None
         else:
             obj.annotation_select_mask = self.annotation_select_mask.copy()
+        obj.combined_queries = tuple(query.clone() for query in self.combined_queries)
         # _annotation_select_cache cannot be copied, as doing so breaks the
         # (necessary) state in which both annotations and
         # _annotation_select_cache point to the same underlying objects.
@@ -1324,9 +1325,7 @@ class Query(BaseExpression):
         require_outer = lookup_type == 'isnull' and condition.rhs is True and not current_negated
         if current_negated and (lookup_type != 'isnull' or condition.rhs is False) and condition.rhs is not None:
             require_outer = True
-            if (lookup_type != 'isnull' and (
-                    self.is_nullable(targets[0]) or
-                    self.alias_map[join_list[-1]].join_type == LOUTER)):
+            if lookup_type != 'isnull':
                 # The condition added here will be SQL like this:
                 # NOT (col IS NOT NULL), where the first NOT is added in
                 # upper layers of code. The reason for addition is that if col
@@ -1336,9 +1335,18 @@ class Query(BaseExpression):
                 # (col IS NULL OR col != someval)
                 #   <=>
                 # NOT (col IS NOT NULL AND col = someval).
-                lookup_class = targets[0].get_lookup('isnull')
-                col = self._get_col(targets[0], join_info.targets[0], alias)
-                clause.add(lookup_class(col, False), AND)
+                if (
+                    self.is_nullable(targets[0]) or
+                    self.alias_map[join_list[-1]].join_type == LOUTER
+                ):
+                    lookup_class = targets[0].get_lookup('isnull')
+                    col = self._get_col(targets[0], join_info.targets[0], alias)
+                    clause.add(lookup_class(col, False), AND)
+                # If someval is a nullable column, someval IS NOT NULL is
+                # added.
+                if isinstance(value, Col) and self.is_nullable(value.target):
+                    lookup_class = value.target.get_lookup('isnull')
+                    clause.add(lookup_class(value, False), AND)
         return clause, used_joins if not require_outer else ()
 
     def add_filter(self, filter_clause):
@@ -1770,6 +1778,8 @@ class Query(BaseExpression):
 
     def set_empty(self):
         self.where.add(NothingNode(), AND)
+        for query in self.combined_queries:
+            query.set_empty()
 
     def is_empty(self):
         return any(isinstance(c, NothingNode) for c in self.where.children)

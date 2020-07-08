@@ -68,7 +68,8 @@ Minor features
 :mod:`django.contrib.gis`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* The :meth:`.GDALRaster.transform` method now supports
+  :class:`~django.contrib.gis.gdal.SpatialReference`.
 
 :mod:`django.contrib.messages`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -222,6 +223,9 @@ Models
 
 * The new :attr:`.UniqueConstraint.opclasses` attribute allows setting
   PostgreSQL operator classes.
+
+* The :meth:`.QuerySet.update` method now respects the ``order_by()`` clause on
+  MySQL and MariaDB.
 
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
