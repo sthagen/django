@@ -3,15 +3,17 @@ import pickle
 import unittest
 import uuid
 from copy import deepcopy
+from decimal import Decimal
 from unittest import mock
 
 from django.core.exceptions import FieldError
 from django.db import DatabaseError, NotSupportedError, connection
 from django.db.models import (
-    Avg, BooleanField, Case, CharField, Count, DateField, DateTimeField,
-    DurationField, Exists, Expression, ExpressionList, ExpressionWrapper, F,
-    Func, IntegerField, Max, Min, Model, OrderBy, OuterRef, Q, StdDev,
-    Subquery, Sum, TimeField, UUIDField, Value, Variance, When,
+    Avg, BinaryField, BooleanField, Case, CharField, Count, DateField,
+    DateTimeField, DecimalField, DurationField, Exists, Expression,
+    ExpressionList, ExpressionWrapper, F, FloatField, Func, IntegerField, Max,
+    Min, Model, OrderBy, OuterRef, Q, StdDev, Subquery, Sum, TimeField,
+    UUIDField, Value, Variance, When,
 )
 from django.db.models.expressions import Col, Combinable, Random, RawSQL, Ref
 from django.db.models.functions import (
@@ -727,7 +729,7 @@ class BasicExpressionsTests(TestCase):
         self.assertEqual(qs.get().ceo_company, 'Test GmbH')
 
     def test_pickle_expression(self):
-        expr = Value(1, output_field=IntegerField())
+        expr = Value(1)
         expr.convert_value  # populate cached property
         self.assertEqual(pickle.loads(pickle.dumps(expr)), expr)
 
@@ -1543,7 +1545,7 @@ class FTimeDeltaTests(TestCase):
     def test_time_subtraction(self):
         Time.objects.create(time=datetime.time(12, 30, 15, 2345))
         queryset = Time.objects.annotate(
-            difference=F('time') - Value(datetime.time(11, 15, 0), output_field=TimeField()),
+            difference=F('time') - Value(datetime.time(11, 15, 0)),
         )
         self.assertEqual(
             queryset.get().difference,
@@ -1629,7 +1631,7 @@ class FTimeDeltaTests(TestCase):
 
     def test_date_minus_duration(self):
         more_than_4_days = Experiment.objects.filter(
-            assigned__lt=F('completed') - Value(datetime.timedelta(days=4), output_field=DurationField())
+            assigned__lt=F('completed') - Value(datetime.timedelta(days=4))
         )
         self.assertQuerysetEqual(more_than_4_days, ['e3', 'e4', 'e5'], lambda e: e.name)
 
@@ -1702,6 +1704,38 @@ class ValueTests(TestCase):
         msg = 'ExpressionList requires at least one expression'
         with self.assertRaisesMessage(ValueError, msg):
             ExpressionList()
+
+    def test_compile_unresolved(self):
+        # This test might need to be revisited later on if #25425 is enforced.
+        compiler = Time.objects.all().query.get_compiler(connection=connection)
+        value = Value('foo')
+        self.assertEqual(value.as_sql(compiler, connection), ('%s', ['foo']))
+        value = Value('foo', output_field=CharField())
+        self.assertEqual(value.as_sql(compiler, connection), ('%s', ['foo']))
+
+    def test_resolve_output_field(self):
+        value_types = [
+            ('str', CharField),
+            (True, BooleanField),
+            (42, IntegerField),
+            (3.14, FloatField),
+            (datetime.date(2019, 5, 15), DateField),
+            (datetime.datetime(2019, 5, 15), DateTimeField),
+            (datetime.time(3, 16), TimeField),
+            (datetime.timedelta(1), DurationField),
+            (Decimal('3.14'), DecimalField),
+            (b'', BinaryField),
+            (uuid.uuid4(), UUIDField),
+        ]
+        for value, ouput_field_type in value_types:
+            with self.subTest(type=type(value)):
+                expr = Value(value)
+                self.assertIsInstance(expr.output_field, ouput_field_type)
+
+    def test_resolve_output_field_failure(self):
+        msg = 'Cannot resolve expression type, unknown output_field'
+        with self.assertRaisesMessage(FieldError, msg):
+            Value(object()).output_field
 
 
 class FieldTransformTests(TestCase):
@@ -1840,7 +1874,9 @@ class ExpressionWrapperTests(SimpleTestCase):
         self.assertEqual(expr.get_group_by_cols(alias=None), [])
 
     def test_non_empty_group_by(self):
-        expr = ExpressionWrapper(Lower(Value('f')), output_field=IntegerField())
+        value = Value('f')
+        value.output_field = None
+        expr = ExpressionWrapper(Lower(value), output_field=IntegerField())
         group_by_cols = expr.get_group_by_cols(alias=None)
         self.assertEqual(group_by_cols, [expr.expression])
         self.assertEqual(group_by_cols[0].output_field, expr.output_field)
