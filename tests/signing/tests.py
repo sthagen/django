@@ -126,6 +126,14 @@ class TestSigner(SimpleTestCase):
             self.assertNotEqual(o, signing.dumps(o, compress=True))
             self.assertEqual(o, signing.loads(signing.dumps(o, compress=True)))
 
+    def test_dumps_loads_legacy_signature(self):
+        # RemovedInDjango40Warning: pre-Django 3.1 signatures won't be
+        # supported.
+        value = 'a string \u2020'
+        # SHA-1 signed value.
+        signed = 'ImEgc3RyaW5nIFx1MjAyMCI:1k1beT:ZfNhN1kdws7KosUleOvuYroPHEc'
+        self.assertEqual(signing.loads(signed), value)
+
     def test_decode_detects_tampering(self):
         "loads should raise exception for tampered objects"
         transforms = (

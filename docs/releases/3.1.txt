@@ -418,9 +418,10 @@ Security
   origins. If you need the previous behavior, explicitly set
   :setting:`SECURE_REFERRER_POLICY` to ``None``.
 
-* The default :class:`django.core.signing.Signer` algorithm is changed to the
-  SHA-256. Support for signatures made with the old SHA-1 algorithm remains
-  until Django 4.0.
+* The default algorithm of :class:`django.core.signing.Signer`,
+  :meth:`django.core.signing.loads`, and :meth:`django.core.signing.dumps` is
+  changed to the SHA-256. Support for signatures made with the old SHA-1
+  algorithm remains until Django 4.0.
 
   Also, the new ``algorithm`` parameter of the
   :class:`~django.core.signing.Signer` allows customizing the hashing
@@ -533,7 +534,10 @@ backends.
   ``DatabaseFeatures.supports_json_field`` to ``False``. If storing primitives
   is not supported, set ``DatabaseFeatures.supports_primitives_in_json_field``
   to ``False``. If there is a true datatype for JSON, set
-  ``DatabaseFeatures.has_native_json_field`` to ``True``.
+  ``DatabaseFeatures.has_native_json_field`` to ``True``. If
+  :lookup:`jsonfield.contains` and :lookup:`jsonfield.contained_by` are not
+  supported, set ``DatabaseFeatures.supports_json_field_contains`` to
+  ``False``.
 
 * Third party database backends must implement introspection for ``JSONField``
   or set ``can_introspect_json_field`` to ``False``.
