@@ -85,7 +85,15 @@ Minor features
 :mod:`django.contrib.contenttypes`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* The new ``absolute_max`` argument for
+  :func:`~django.contrib.contenttypes.forms.generic_inlineformset_factory`
+  allows customizing the maximum number of forms that can be instantiated when
+  supplying ``POST`` data. See :ref:`formsets-absolute-max` for more details.
+
+* The new ``can_delete_extra`` argument for
+  :func:`~django.contrib.contenttypes.forms.generic_inlineformset_factory`
+  allows removal of the option to delete extra forms. See
+  :attr:`~.BaseFormSet.can_delete_extra` for more information.
 
 :mod:`django.contrib.gis`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -96,9 +104,7 @@ Minor features
 :mod:`django.contrib.messages`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* The :class:`~django.contrib.postgres.operations.CreateExtension` operation
-  now checks that the extension already exists in the database and skips the
-  migration if so.
+* ...
 
 :mod:`django.contrib.postgres`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -111,6 +117,10 @@ Minor features
 
 * The new :attr:`.JSONBAgg.ordering` attribute determines the ordering of the
   aggregated elements.
+
+* The :class:`~django.contrib.postgres.operations.CreateExtension` operation
+  now checks that the extension already exists in the database and skips the
+  migration if so.
 
 :mod:`django.contrib.redirects`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -275,6 +285,15 @@ Models
 
 * The new :class:`~django.db.models.functions.Collate` function allows
   filtering and ordering by specified database collations.
+
+* The ``field_name`` argument of :meth:`.QuerySet.in_bulk()` now accepts
+  distinct fields if there's only one field specified in
+  :meth:`.QuerySet.distinct`.
+
+* The new ``tzinfo`` parameter of the
+  :class:`~django.db.models.functions.TruncDate` and
+  :class:`~django.db.models.functions.TruncTime` database functions allows
+  truncating datetimes in a specific timezone.
 
 Pagination
 ~~~~~~~~~~
@@ -461,6 +480,19 @@ Miscellaneous
 
 * Keyword arguments to :func:`~django.test.utils.setup_databases` are now
   keyword-only.
+
+* The undocumented ``django.utils.http.limited_parse_qsl()`` function is
+  removed. Please use :func:`urllib.parse.parse_qsl` instead.
+
+* ``django.test.utils.TestContextDecorator`` now uses
+  :py:meth:`~unittest.TestCase.addCleanup` so that cleanups registered in the
+  :py:meth:`~unittest.TestCase.setUp` method are called before
+  ``TestContextDecorator.disable()``.
+
+* ``SessionMiddleware`` now raises a
+  :exc:`~django.contrib.sessions.exceptions.SessionInterrupted` exception
+  instead of :exc:`~django.core.exceptions.SuspiciousOperation` when a session
+  is destroyed in a concurrent request.
 
 .. _deprecated-features-3.2:
 

@@ -9,13 +9,15 @@ from unittest import mock
 from django.core.exceptions import FieldError
 from django.db import DatabaseError, NotSupportedError, connection
 from django.db.models import (
-    Avg, BinaryField, BooleanField, Case, CharField, Count, DateField,
-    DateTimeField, DecimalField, DurationField, Exists, Expression,
+    AutoField, Avg, BinaryField, BooleanField, Case, CharField, Count,
+    DateField, DateTimeField, DecimalField, DurationField, Exists, Expression,
     ExpressionList, ExpressionWrapper, F, FloatField, Func, IntegerField, Max,
     Min, Model, OrderBy, OuterRef, Q, StdDev, Subquery, Sum, TimeField,
     UUIDField, Value, Variance, When,
 )
-from django.db.models.expressions import Col, Combinable, Random, RawSQL, Ref
+from django.db.models.expressions import (
+    Col, Combinable, CombinedExpression, Random, RawSQL, Ref,
+)
 from django.db.models.functions import (
     Coalesce, Concat, Left, Length, Lower, Substr, Upper,
 )
@@ -1886,6 +1888,28 @@ class CombinableTests(SimpleTestCase):
     def test_reversed_or(self):
         with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):
             object() | Combinable()
+
+
+class CombinedExpressionTests(SimpleTestCase):
+    def test_resolve_output_field(self):
+        tests = [
+            (IntegerField, AutoField, IntegerField),
+            (AutoField, IntegerField, IntegerField),
+            (IntegerField, DecimalField, DecimalField),
+            (DecimalField, IntegerField, DecimalField),
+            (IntegerField, FloatField, FloatField),
+            (FloatField, IntegerField, FloatField),
+        ]
+        connectors = [Combinable.ADD, Combinable.SUB, Combinable.MUL, Combinable.DIV]
+        for lhs, rhs, combined in tests:
+            for connector in connectors:
+                with self.subTest(lhs=lhs, connector=connector, rhs=rhs, combined=combined):
+                    expr = CombinedExpression(
+                        Expression(lhs()),
+                        connector,
+                        Expression(rhs()),
+                    )
+                    self.assertIsInstance(expr.output_field, combined)
 
 
 class ExpressionWrapperTests(SimpleTestCase):

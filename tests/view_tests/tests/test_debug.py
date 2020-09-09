@@ -86,6 +86,16 @@ class DebugViewTests(SimpleTestCase):
             response = self.client.get('/raises400/')
         self.assertContains(response, '<div class="context" id="', status_code=400)
 
+    def test_400_bad_request(self):
+        # When DEBUG=True, technical_500_template() is called.
+        with self.assertLogs('django.request', 'WARNING') as cm:
+            response = self.client.get('/raises400_bad_request/')
+        self.assertContains(response, '<div class="context" id="', status_code=400)
+        self.assertEqual(
+            cm.records[0].getMessage(),
+            'Malformed request syntax: /raises400_bad_request/',
+        )
+
     # Ensure no 403.html template exists to test the default case.
     @override_settings(TEMPLATES=[{
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -113,13 +123,25 @@ class DebugViewTests(SimpleTestCase):
     def test_404(self):
         response = self.client.get('/raises404/')
         self.assertEqual(response.status_code, 404)
-        self.assertContains(response, '<code>not-in-urls</code>, didn’t match', status_code=404)
+        self.assertContains(
+            response,
+            '<p>The current path, <code>not-in-urls</code>, didn’t match any '
+            'of these.</p>',
+            status_code=404,
+            html=True,
+        )
 
     def test_404_not_in_urls(self):
         response = self.client.get('/not-in-urls')
         self.assertNotContains(response, "Raised by:", status_code=404)
         self.assertContains(response, "Django tried these URL patterns", status_code=404)
-        self.assertContains(response, '<code>not-in-urls</code>, didn’t match', status_code=404)
+        self.assertContains(
+            response,
+            '<p>The current path, <code>not-in-urls</code>, didn’t match any '
+            'of these.</p>',
+            status_code=404,
+            html=True,
+        )
         # Pattern and view name of a RegexURLPattern appear.
         self.assertContains(response, r"^regex-post/(?P&lt;pk&gt;[0-9]+)/$", status_code=404)
         self.assertContains(response, "[name='regex-post']", status_code=404)
@@ -130,12 +152,24 @@ class DebugViewTests(SimpleTestCase):
     @override_settings(ROOT_URLCONF=WithoutEmptyPathUrls)
     def test_404_empty_path_not_in_urls(self):
         response = self.client.get('/')
-        self.assertContains(response, 'The empty path didn’t match any of these.', status_code=404)
+        self.assertContains(
+            response,
+            '<p>The empty path didn’t match any of these.</p>',
+            status_code=404,
+            html=True,
+        )
 
     def test_technical_404(self):
         response = self.client.get('/technical404/')
         self.assertContains(response, "Raised by:", status_code=404)
         self.assertContains(response, "view_tests.views.technical404", status_code=404)
+        self.assertContains(
+            response,
+            '<p>The current path, <code>technical404/</code>, matched the '
+            'last one.</p>',
+            status_code=404,
+            html=True,
+        )
 
     def test_classbased_technical_404(self):
         response = self.client.get('/classbased404/')
@@ -296,6 +330,16 @@ class NonDjangoTemplatesDebugViewTests(SimpleTestCase):
         with self.assertLogs('django.security', 'WARNING'):
             response = self.client.get('/raises400/')
         self.assertContains(response, '<div class="context" id="', status_code=400)
+
+    def test_400_bad_request(self):
+        # When DEBUG=True, technical_500_template() is called.
+        with self.assertLogs('django.request', 'WARNING') as cm:
+            response = self.client.get('/raises400_bad_request/')
+        self.assertContains(response, '<div class="context" id="', status_code=400)
+        self.assertEqual(
+            cm.records[0].getMessage(),
+            'Malformed request syntax: /raises400_bad_request/',
+        )
 
     def test_403(self):
         response = self.client.get('/raises403/')
@@ -1272,6 +1316,19 @@ class ExceptionReporterFilterTests(ExceptionReportTestMixin, LoggingCaptureMixin
         self.assertEqual(
             reporter_filter.cleanse_setting('SETTING_NAME', initial),
             {'login': 'cooper', 'password': reporter_filter.cleansed_substitute},
+        )
+
+    def test_cleanse_setting_recurses_in_dictionary_with_non_string_key(self):
+        reporter_filter = SafeExceptionReporterFilter()
+        initial = {('localhost', 8000): {'login': 'cooper', 'password': 'secret'}}
+        self.assertEqual(
+            reporter_filter.cleanse_setting('SETTING_NAME', initial),
+            {
+                ('localhost', 8000): {
+                    'login': 'cooper',
+                    'password': reporter_filter.cleansed_substitute,
+                },
+            },
         )
 
     def test_cleanse_setting_recurses_in_list_tuples(self):

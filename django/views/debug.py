@@ -91,18 +91,19 @@ class SafeExceptionReporterFilter:
         value is a dictionary, recursively cleanse the keys in that dictionary.
         """
         try:
-            if self.hidden_settings.search(key):
-                cleansed = self.cleansed_substitute
-            elif isinstance(value, dict):
-                cleansed = {k: self.cleanse_setting(k, v) for k, v in value.items()}
-            elif isinstance(value, list):
-                cleansed = [self.cleanse_setting('', v) for v in value]
-            elif isinstance(value, tuple):
-                cleansed = tuple([self.cleanse_setting('', v) for v in value])
-            else:
-                cleansed = value
+            is_sensitive = self.hidden_settings.search(key)
         except TypeError:
-            # If the key isn't regex-able, just return as-is.
+            is_sensitive = False
+
+        if is_sensitive:
+            cleansed = self.cleansed_substitute
+        elif isinstance(value, dict):
+            cleansed = {k: self.cleanse_setting(k, v) for k, v in value.items()}
+        elif isinstance(value, list):
+            cleansed = [self.cleanse_setting('', v) for v in value]
+        elif isinstance(value, tuple):
+            cleansed = tuple([self.cleanse_setting('', v) for v in value])
+        else:
             cleansed = value
 
         if callable(cleansed):
@@ -480,8 +481,10 @@ def technical_404_response(request, exception):
     try:
         tried = exception.args[0]['tried']
     except (IndexError, TypeError, KeyError):
-        tried = []
+        resolved = True
+        tried = request.resolver_match.tried if request.resolver_match else None
     else:
+        resolved = False
         if (not tried or (                  # empty URLconf
             request.path == '/' and
             len(tried) == 1 and             # default URLconf
@@ -519,6 +522,7 @@ def technical_404_response(request, exception):
         'root_urlconf': settings.ROOT_URLCONF,
         'request_path': error_url,
         'urlpatterns': tried,
+        'resolved': resolved,
         'reason': str(exception),
         'request': request,
         'settings': reporter_filter.get_safe_settings(),
