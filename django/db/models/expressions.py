@@ -811,16 +811,6 @@ class Star(Expression):
         return '*', []
 
 
-class Random(Expression):
-    output_field = fields.FloatField()
-
-    def __repr__(self):
-        return "Random()"
-
-    def as_sql(self, compiler, connection):
-        return connection.ops.random_function_sql(), []
-
-
 class Col(Expression):
 
     contains_column_references = True
@@ -930,7 +920,7 @@ class ExpressionWrapper(Expression):
         return expression.get_group_by_cols(alias=alias)
 
     def as_sql(self, compiler, connection):
-        return self.expression.as_sql(compiler, connection)
+        return compiler.compile(self.expression)
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, self.expression)
@@ -1077,6 +1067,11 @@ class Case(Expression):
         if self._output_field_or_none is not None:
             sql = connection.ops.unification_cast_sql(self.output_field) % sql
         return sql, sql_params
+
+    def get_group_by_cols(self, alias=None):
+        if not self.cases:
+            return self.default.get_group_by_cols(alias)
+        return super().get_group_by_cols(alias)
 
 
 class Subquery(Expression):
@@ -1253,7 +1248,7 @@ class OrderBy(BaseExpression):
         self.descending = True
 
 
-class Window(Expression):
+class Window(SQLiteNumericMixin, Expression):
     template = '%(expression)s OVER (%(window)s)'
     # Although the main expression may either be an aggregate or an
     # expression with an aggregate function, the GROUP BY that will
@@ -1331,6 +1326,16 @@ class Window(Expression):
             'expression': expr_sql,
             'window': ''.join(window_sql).strip()
         }, params
+
+    def as_sqlite(self, compiler, connection):
+        if isinstance(self.output_field, fields.DecimalField):
+            # Casting to numeric must be outside of the window expression.
+            copy = self.copy()
+            source_expressions = copy.get_source_expressions()
+            source_expressions[0].output_field = fields.FloatField()
+            copy.set_source_expressions(source_expressions)
+            return super(Window, copy).as_sqlite(compiler, connection)
+        return self.as_sql(compiler, connection)
 
     def __str__(self):
         return '{} OVER ({}{}{})'.format(

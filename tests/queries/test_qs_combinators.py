@@ -106,6 +106,11 @@ class QuerySetSetOperationTests(TestCase):
         self.assertEqual(len(qs2.union(qs2)), 0)
         self.assertEqual(len(qs3.union(qs3)), 0)
 
+    def test_empty_qs_union_with_ordered_qs(self):
+        qs1 = Number.objects.all().order_by('num')
+        qs2 = Number.objects.none().union(qs1).order_by('num')
+        self.assertEqual(list(qs1), list(qs2))
+
     def test_limits(self):
         qs1 = Number.objects.all()
         qs2 = Number.objects.all()
@@ -227,6 +232,22 @@ class QuerySetSetOperationTests(TestCase):
         qs2 = Number.objects.filter(num__lte=5)
         self.assertEqual(qs1.intersection(qs2).count(), 1)
 
+    def test_get_union(self):
+        qs = Number.objects.filter(num=2)
+        self.assertEqual(qs.union(qs).get().num, 2)
+
+    @skipUnlessDBFeature('supports_select_difference')
+    def test_get_difference(self):
+        qs1 = Number.objects.all()
+        qs2 = Number.objects.exclude(num=2)
+        self.assertEqual(qs1.difference(qs2).get().num, 2)
+
+    @skipUnlessDBFeature('supports_select_intersection')
+    def test_get_intersection(self):
+        qs1 = Number.objects.all()
+        qs2 = Number.objects.filter(num=2)
+        self.assertEqual(qs1.intersection(qs2).get().num, 2)
+
     @skipUnlessDBFeature('supports_slicing_ordering_in_compound')
     def test_ordering_subqueries(self):
         qs1 = Number.objects.order_by('num')[:2]
@@ -237,12 +258,15 @@ class QuerySetSetOperationTests(TestCase):
     def test_unsupported_ordering_slicing_raises_db_error(self):
         qs1 = Number.objects.all()
         qs2 = Number.objects.all()
+        qs3 = Number.objects.all()
         msg = 'LIMIT/OFFSET not allowed in subqueries of compound statements'
         with self.assertRaisesMessage(DatabaseError, msg):
             list(qs1.union(qs2[:10]))
         msg = 'ORDER BY not allowed in subqueries of compound statements'
         with self.assertRaisesMessage(DatabaseError, msg):
             list(qs1.order_by('id').union(qs2))
+        with self.assertRaisesMessage(DatabaseError, msg):
+            list(qs1.union(qs2).order_by('id').union(qs3))
 
     @skipIfDBFeature('supports_select_intersection')
     def test_unsupported_intersection_raises_db_error(self):
@@ -322,3 +346,16 @@ class QuerySetSetOperationTests(TestCase):
                         msg % (operation, combinator),
                     ):
                         getattr(getattr(qs, combinator)(qs), operation)()
+
+    def test_get_with_filters_unsupported_on_combined_qs(self):
+        qs = Number.objects.all()
+        msg = 'Calling QuerySet.get(...) with filters after %s() is not supported.'
+        combinators = ['union']
+        if connection.features.supports_select_difference:
+            combinators.append('difference')
+        if connection.features.supports_select_intersection:
+            combinators.append('intersection')
+        for combinator in combinators:
+            with self.subTest(combinator=combinator):
+                with self.assertRaisesMessage(NotSupportedError, msg % combinator):
+                    getattr(qs, combinator)(qs).get(num=2)

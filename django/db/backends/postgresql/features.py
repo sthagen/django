@@ -58,9 +58,16 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_deferrable_unique_constraints = True
     has_json_operators = True
     json_key_contains_list_matching_requires_list = True
-    test_collations = {
-        'swedish-ci': 'sv-x-icu',
-    }
+
+    @cached_property
+    def test_collations(self):
+        # PostgreSQL < 10 doesn't support ICU collations.
+        if self.is_postgresql_10:
+            return {
+                'non_default': 'sv-x-icu',
+                'swedish_ci': 'sv-x-icu',
+            }
+        return {}
 
     @cached_property
     def introspected_field_types(self):
@@ -92,3 +99,5 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_table_partitions = property(operator.attrgetter('is_postgresql_10'))
     supports_covering_indexes = property(operator.attrgetter('is_postgresql_11'))
     supports_covering_gist_indexes = property(operator.attrgetter('is_postgresql_12'))
+    supports_non_deterministic_collations = property(operator.attrgetter('is_postgresql_12'))
+    supports_alternate_collation_providers = property(operator.attrgetter('is_postgresql_10'))

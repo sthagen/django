@@ -4,6 +4,8 @@ from django.utils.functional import cached_property
 
 class BaseDatabaseFeatures:
     gis_enabled = False
+    # Oracle can't group by LOB (large object) data types.
+    allows_group_by_lob = True
     allows_group_by_pk = False
     allows_group_by_selected_pks = False
     empty_fetchmany_value = []
@@ -172,6 +174,9 @@ class BaseDatabaseFeatures:
     # Can it create foreign key constraints inline when adding columns?
     can_create_inline_fk = True
 
+    # Does it automatically index foreign keys?
+    indexes_foreign_keys = True
+
     # Does it support CHECK constraints?
     supports_column_check_constraints = True
     supports_table_check_constraints = True
@@ -302,11 +307,18 @@ class BaseDatabaseFeatures:
     # {'d': [{'f': 'g'}]}?
     json_key_contains_list_matching_requires_list = False
 
+    # Does the backend support column collations?
+    supports_collation_on_charfield = True
+    supports_collation_on_textfield = True
+    # Does the backend support non-deterministic collations?
+    supports_non_deterministic_collations = True
+
     # Collation names for use by the Django test suite.
     test_collations = {
         'ci': None,  # Case-insensitive.
         'cs': None,  # Case-sensitive.
-        'swedish-ci': None  # Swedish case-insensitive.
+        'non_default': None,  # Non-default.
+        'swedish_ci': None  # Swedish case-insensitive.
     }
 
     def __init__(self, connection):

@@ -202,7 +202,11 @@ class Migration(migrations.Migration):
                 ('boolean_field', models.BooleanField(null=True)),
                 ('char_field', models.CharField(max_length=30, blank=True)),
                 ('integer_field', models.IntegerField(null=True)),
-            ]
+                ('json_field', models.JSONField(null=True)),
+            ],
+            options={
+                'required_db_vendor': 'postgresql',
+            },
         ),
         migrations.CreateModel(
             name='StatTestModel',
@@ -215,7 +219,10 @@ class Migration(migrations.Migration):
                     models.SET_NULL,
                     null=True,
                 )),
-            ]
+            ],
+            options={
+                'required_db_vendor': 'postgresql',
+            },
         ),
         migrations.CreateModel(
             name='NowTestModel',
@@ -296,6 +303,7 @@ class Migration(migrations.Migration):
                 ('start', models.DateTimeField()),
                 ('end', models.DateTimeField()),
                 ('cancelled', models.BooleanField(default=False)),
+                ('requirements', models.JSONField(blank=True, null=True)),
             ],
             options={
                 'required_db_vendor': 'postgresql',

@@ -1277,6 +1277,7 @@ for _cache_params in settings.CACHES.values():
 
 MemcachedCache_params = configured_caches.get('django.core.cache.backends.memcached.MemcachedCache')
 PyLibMCCache_params = configured_caches.get('django.core.cache.backends.memcached.PyLibMCCache')
+PyMemcacheCache_params = configured_caches.get('django.core.cache.backends.memcached.PyMemcacheCache')
 
 # The memcached backends don't support cull-related options like `MAX_ENTRIES`.
 memcached_excluded_caches = {'cull', 'zero_cull'}
@@ -1446,12 +1447,47 @@ class PyLibMCCacheTests(BaseMemcachedTests, TestCase):
         tests = [
             ('unix:/run/memcached/socket', '/run/memcached/socket'),
             ('/run/memcached/socket', '/run/memcached/socket'),
+            ('localhost', 'localhost'),
+            ('localhost:11211', 'localhost:11211'),
+            ('[::1]', '[::1]'),
+            ('[::1]:11211', '[::1]:11211'),
+            ('127.0.0.1', '127.0.0.1'),
             ('127.0.0.1:11211', '127.0.0.1:11211'),
         ]
         for location, expected in tests:
             settings = {'default': {'BACKEND': backend, 'LOCATION': location}}
             with self.subTest(location), self.settings(CACHES=settings):
                 self.assertEqual(cache.client_servers, [expected])
+
+
+@unittest.skipUnless(PyMemcacheCache_params, 'PyMemcacheCache backend not configured')
+@override_settings(CACHES=caches_setting_for_tests(
+    base=PyMemcacheCache_params,
+    exclude=memcached_excluded_caches,
+))
+class PyMemcacheCacheTests(BaseMemcachedTests, TestCase):
+    base_params = PyMemcacheCache_params
+
+    def test_pymemcache_highest_pickle_version(self):
+        self.assertEqual(
+            cache._cache.default_kwargs['serde']._serialize_func.keywords['pickle_version'],
+            pickle.HIGHEST_PROTOCOL,
+        )
+        for cache_key in settings.CACHES:
+            for client_key, client in caches[cache_key]._cache.clients.items():
+                with self.subTest(cache_key=cache_key, server=client_key):
+                    self.assertEqual(
+                        client.serde._serialize_func.keywords['pickle_version'],
+                        pickle.HIGHEST_PROTOCOL,
+                    )
+
+    @override_settings(CACHES=caches_setting_for_tests(
+        base=PyMemcacheCache_params,
+        exclude=memcached_excluded_caches,
+        OPTIONS={'no_delay': True},
+    ))
+    def test_pymemcache_options(self):
+        self.assertIs(cache._cache.default_kwargs['no_delay'], True)
 
 
 @override_settings(CACHES=caches_setting_for_tests(
@@ -1700,9 +1736,9 @@ class CacheUtils(SimpleTestCase):
             with self.subTest(initial_vary=initial_vary, newheaders=newheaders):
                 response = HttpResponse()
                 if initial_vary is not None:
-                    response['Vary'] = initial_vary
+                    response.headers['Vary'] = initial_vary
                 patch_vary_headers(response, newheaders)
-                self.assertEqual(response['Vary'], resulting_vary)
+                self.assertEqual(response.headers['Vary'], resulting_vary)
 
     def test_get_cache_key(self):
         request = self.factory.get(self.path)
@@ -1753,7 +1789,7 @@ class CacheUtils(SimpleTestCase):
     def test_learn_cache_key(self):
         request = self.factory.head(self.path)
         response = HttpResponse()
-        response['Vary'] = 'Pony'
+        response.headers['Vary'] = 'Pony'
         # Make sure that the Vary header is added to the key hash
         learn_cache_key(request, response)
 
@@ -1795,9 +1831,9 @@ class CacheUtils(SimpleTestCase):
             with self.subTest(initial_cc=initial_cc, newheaders=newheaders):
                 response = HttpResponse()
                 if initial_cc is not None:
-                    response['Cache-Control'] = initial_cc
+                    response.headers['Cache-Control'] = initial_cc
                 patch_cache_control(response, **newheaders)
-                parts = set(cc_delim_re.split(response['Cache-Control']))
+                parts = set(cc_delim_re.split(response.headers['Cache-Control']))
                 self.assertEqual(parts, expected_cc)
 
 
@@ -1892,7 +1928,7 @@ class CacheI18nTest(SimpleTestCase):
         request.META['HTTP_ACCEPT_LANGUAGE'] = accept_language
         request.META['HTTP_ACCEPT_ENCODING'] = 'gzip;q=1.0, identity; q=0.5, *;q=0'
         response = HttpResponse()
-        response['Vary'] = vary
+        response.headers['Vary'] = vary
         key = learn_cache_key(request, response)
         key2 = get_cache_key(request)
         self.assertEqual(key, reference_key)
@@ -1905,7 +1941,7 @@ class CacheI18nTest(SimpleTestCase):
         request = self.factory.get(self.path)
         request.META['HTTP_ACCEPT_ENCODING'] = 'gzip;q=1.0, identity; q=0.5, *;q=0'
         response = HttpResponse()
-        response['Vary'] = 'accept-encoding'
+        response.headers['Vary'] = 'accept-encoding'
         key = learn_cache_key(request, response)
         self.assertIn(lang, key, "Cache keys should include the language name when translation is active")
         self.check_accept_language_vary(
@@ -2364,9 +2400,9 @@ class TestWithTemplateResponse(SimpleTestCase):
                 template = engines['django'].from_string("This is a test")
                 response = TemplateResponse(HttpRequest(), template)
                 if initial_vary is not None:
-                    response['Vary'] = initial_vary
+                    response.headers['Vary'] = initial_vary
                 patch_vary_headers(response, newheaders)
-                self.assertEqual(response['Vary'], resulting_vary)
+                self.assertEqual(response.headers['Vary'], resulting_vary)
 
     def test_get_cache_key(self):
         request = self.factory.get(self.path)

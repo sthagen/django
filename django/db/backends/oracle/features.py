@@ -1,9 +1,12 @@
-from django.db import InterfaceError
+from django.db import DatabaseError, InterfaceError
 from django.db.backends.base.features import BaseDatabaseFeatures
 from django.utils.functional import cached_property
 
 
 class DatabaseFeatures(BaseDatabaseFeatures):
+    # Oracle crashes with "ORA-00932: inconsistent datatypes: expected - got
+    # BLOB" when grouping by LOBs (#24096).
+    allows_group_by_lob = False
     interprets_empty_strings_as_nulls = True
     has_select_for_update = True
     has_select_for_update_nowait = True
@@ -61,9 +64,11 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_boolean_expr_in_select_clause = False
     supports_primitives_in_json_field = False
     supports_json_field_contains = False
+    supports_collation_on_textfield = False
     test_collations = {
         'ci': 'BINARY_CI',
         'cs': 'BINARY',
+        'non_default': 'SWEDISH_CI',
         'swedish_ci': 'SWEDISH_CI',
     }
 
@@ -78,3 +83,14 @@ class DatabaseFeatures(BaseDatabaseFeatures):
             'SmallIntegerField': 'IntegerField',
             'TimeField': 'DateTimeField',
         }
+
+    @cached_property
+    def supports_collation_on_charfield(self):
+        with self.connection.cursor() as cursor:
+            try:
+                cursor.execute("SELECT CAST('a' AS VARCHAR2(4001)) FROM dual")
+            except DatabaseError as e:
+                if e.args[0].code == 910:
+                    return False
+                raise
+            return True

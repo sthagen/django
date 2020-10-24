@@ -23,8 +23,8 @@ end in April 2022.
 Python compatibility
 ====================
 
-Django 3.2 supports Python 3.6, 3.7, and 3.8. We **highly recommend** and only
-officially support the latest release of each series.
+Django 3.2 supports Python 3.6, 3.7, 3.8, and 3.9. We **highly recommend** and
+only officially support the latest release of each series.
 
 .. _whats-new-3.2:
 
@@ -53,6 +53,16 @@ needed. As a consequence, it's deprecated.
 
 See :ref:`configuring-applications-ref` for full details.
 
+``pymemcache`` support
+----------------------
+
+The new ``django.core.cache.backends.memcached.PyMemcacheCache`` cache backend
+allows using the pymemcache_ library for memcached. ``pymemcache`` 3.4.0 or
+higher is required. For more details, see the :doc:`documentation on caching in
+Django </topics/cache>`.
+
+.. _pymemcache: https://pypi.org/project/pymemcache/
+
 Minor features
 --------------
 
@@ -61,6 +71,9 @@ Minor features
 
 * :attr:`.ModelAdmin.search_fields` now allows searching against quoted phrases
   with spaces.
+
+* Read-only related fields are now rendered as navigable links if target models
+  are registered in the admin.
 
 :mod:`django.contrib.admindocs`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -122,6 +135,11 @@ Minor features
   now checks that the extension already exists in the database and skips the
   migration if so.
 
+* The new :class:`~django.contrib.postgres.operations.CreateCollation` and
+  :class:`~django.contrib.postgres.operations.RemoveCollation` operations
+  allow creating and dropping collations on PostgreSQL. See
+  :ref:`manage-postgresql-collations` for more details.
+
 :mod:`django.contrib.redirects`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -167,6 +185,13 @@ CSRF
 
 * ...
 
+Decorators
+~~~~~~~~~~
+
+* The new :func:`~django.views.decorators.common.no_append_slash` decorator
+  allows individual views to be excluded from :setting:`APPEND_SLASH` URL
+  normalization.
+
 Email
 ~~~~~
 
@@ -175,7 +200,10 @@ Email
 Error Reporting
 ~~~~~~~~~~~~~~~
 
-* ...
+* Custom :class:`~django.views.debug.ExceptionReporter` subclasses can now set
+  the :attr:`~django.views.debug.ExceptionReporter.html_template_path` and
+  :attr:`~django.views.debug.ExceptionReporter.text_template_path` class
+  attributes to override the templates used to render exception reports.
 
 File Storage
 ~~~~~~~~~~~~
@@ -185,8 +213,9 @@ File Storage
 File Uploads
 ~~~~~~~~~~~~
 
-* ...
-
+* The new :meth:`FileUploadHandler.upload_interrupted()
+  <django.core.files.uploadhandler.FileUploadHandler.upload_interrupted>`
+  callback allows handling interrupted uploads.
 
 Forms
 ~~~~~
@@ -273,11 +302,14 @@ Models
 * :class:`Value() <django.db.models.Value>` expression now
   automatically resolves its ``output_field`` to the appropriate
   :class:`Field <django.db.models.Field>` subclass based on the type of
-  it's provided ``value`` for :py:class:`bool`, :py:class:`bytes`,
+  its provided ``value`` for :py:class:`bool`, :py:class:`bytes`,
   :py:class:`float`, :py:class:`int`, :py:class:`str`,
   :py:class:`datetime.date`, :py:class:`datetime.datetime`,
   :py:class:`datetime.time`, :py:class:`datetime.timedelta`,
-  :py:class:`decimal.Decimal`, and :py:class:`uuid.UUID` instances.
+  :py:class:`decimal.Decimal`, and :py:class:`uuid.UUID` instances. As a
+  consequence, resolving an ``output_field`` for database functions and
+  combined expressions may now crash with mixed types when using ``Value()``.
+  You will need to explicitly set the ``output_field`` in such cases.
 
 * The new :meth:`.QuerySet.alias` method allows creating reusable aliases for
   expressions that don't need to be selected but are used for filtering,
@@ -295,6 +327,13 @@ Models
   :class:`~django.db.models.functions.TruncTime` database functions allows
   truncating datetimes in a specific timezone.
 
+* The new ``db_collation`` argument for
+  :attr:`CharField <django.db.models.CharField.db_collation>` and
+  :attr:`TextField <django.db.models.TextField.db_collation>` allows setting a
+  database collation for the field.
+
+* Added the :class:`~django.db.models.functions.Random` database function.
+
 Pagination
 ~~~~~~~~~~
 
@@ -306,7 +345,15 @@ Pagination
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* Response headers are now stored in :attr:`.HttpResponse.headers`. This can be
+  used instead of the original dict-like interface of ``HttpResponse`` objects.
+  Both interfaces will continue to be supported. See
+  :ref:`setting-header-fields` for details.
+
+* The new ``headers`` parameter of :class:`~django.http.HttpResponse`,
+  :class:`~django.template.response.SimpleTemplateResponse`, and
+  :class:`~django.template.response.TemplateResponse` allows setting response
+  :attr:`~django.http.HttpResponse.headers` on instantiation.
 
 Security
 ~~~~~~~~
@@ -335,7 +382,8 @@ Signals
 Templates
 ~~~~~~~~~
 
-* ...
+* :tfilter:`floatformat` template filter now allows using the ``g`` suffix to
+  force grouping by the :setting:`THOUSAND_SEPARATOR` for the active locale.
 
 Tests
 ~~~~~
@@ -415,6 +463,20 @@ backends.
   unique constraints (:attr:`.UniqueConstraint.include`), set
   ``DatabaseFeatures.supports_covering_indexes`` to ``True``.
 
+* Third-party database backends must implement support for column database
+  collations on ``CharField``\s and ``TextField``\s or set
+  ``DatabaseFeatures.supports_collation_on_charfield`` and
+  ``DatabaseFeatures.supports_collation_on_textfield`` to ``False``. If
+  non-deterministic collations are not supported, set
+  ``supports_non_deterministic_collations`` to ``False``.
+
+* ``DatabaseOperations.random_function_sql()`` is removed in favor of the new
+  :class:`~django.db.models.functions.Random` database function.
+
+* ``DatabaseOperations.date_trunc_sql()`` and
+  ``DatabaseOperations.time_trunc_sql()`` now take the optional ``tzname``
+  argument in order to truncate in a specific timezone.
+
 :mod:`django.contrib.admin`
 ---------------------------
 
@@ -493,6 +555,17 @@ Miscellaneous
   :exc:`~django.contrib.sessions.exceptions.SessionInterrupted` exception
   instead of :exc:`~django.core.exceptions.SuspiciousOperation` when a session
   is destroyed in a concurrent request.
+
+* The :class:`django.db.models.Field` equality operator now correctly
+  distinguishes inherited field instances across models. Additionally, the
+  ordering of such fields is now defined.
+
+* The undocumented ``django.core.files.locks.lock()`` function now returns
+  ``False`` if the file cannot be locked, instead of raising
+  :exc:`BlockingIOError`.
+
+* The password reset mechanism now invalidates tokens when the user email is
+  changed.
 
 .. _deprecated-features-3.2:
 

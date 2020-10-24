@@ -16,7 +16,7 @@ from django.db.models import (
     UUIDField, Value, Variance, When,
 )
 from django.db.models.expressions import (
-    Col, Combinable, CombinedExpression, Random, RawSQL, Ref,
+    Col, Combinable, CombinedExpression, RawSQL, Ref,
 )
 from django.db.models.functions import (
     Coalesce, Concat, Left, Length, Lower, Substr, Upper,
@@ -777,26 +777,26 @@ class BasicExpressionsTests(TestCase):
                 output_field=BooleanField(),
             ),
         )
-        self.assertSequenceEqual(qs, [self.example_inc.ceo, self.foobar_ltd.ceo, self.max])
+        self.assertCountEqual(qs, [self.example_inc.ceo, self.foobar_ltd.ceo, self.max])
 
     def test_boolean_expression_combined(self):
         is_ceo = Company.objects.filter(ceo=OuterRef('pk'))
         is_poc = Company.objects.filter(point_of_contact=OuterRef('pk'))
         self.gmbh.point_of_contact = self.max
         self.gmbh.save()
-        self.assertSequenceEqual(
+        self.assertCountEqual(
             Employee.objects.filter(Exists(is_ceo) | Exists(is_poc)),
             [self.example_inc.ceo, self.foobar_ltd.ceo, self.max],
         )
-        self.assertSequenceEqual(
+        self.assertCountEqual(
             Employee.objects.filter(Exists(is_ceo) & Exists(is_poc)),
             [self.max],
         )
-        self.assertSequenceEqual(
+        self.assertCountEqual(
             Employee.objects.filter(Exists(is_ceo) & Q(salary__gte=30)),
             [self.max],
         )
-        self.assertSequenceEqual(
+        self.assertCountEqual(
             Employee.objects.filter(Exists(is_poc) | Q(salary__lt=15)),
             [self.example_inc.ceo, self.max],
         )
@@ -1814,7 +1814,6 @@ class ReprTests(SimpleTestCase):
         )
         self.assertEqual(repr(Func('published', function='TO_CHAR')), "Func(F(published), function=TO_CHAR)")
         self.assertEqual(repr(OrderBy(Value(1))), 'OrderBy(Value(1), descending=False)')
-        self.assertEqual(repr(Random()), "Random()")
         self.assertEqual(repr(RawSQL('table.col', [])), "RawSQL(table.col, [])")
         self.assertEqual(repr(Ref('sum_cost', Sum('cost'))), "Ref(sum_cost, Sum(F(cost)))")
         self.assertEqual(repr(Value(1)), "Value(1)")
