@@ -131,6 +131,9 @@ Minor features
 * The new :attr:`.JSONBAgg.ordering` attribute determines the ordering of the
   aggregated elements.
 
+* The new :attr:`.JSONBAgg.distinct` attribute determines if aggregated values
+  will be distinct.
+
 * The :class:`~django.contrib.postgres.operations.CreateExtension` operation
   now checks that the extension already exists in the database and skips the
   migration if so.
@@ -229,6 +232,12 @@ Forms
   :func:`.inlineformset_factory`, and :func:`.modelformset_factory` allows
   removal of the option to delete extra forms. See
   :attr:`~.BaseFormSet.can_delete_extra` for more information.
+
+* :class:`~django.forms.formsets.BaseFormSet` now reports a user facing error,
+  rather than raising an exception, when the management form is missing or has
+  been tampered with. To customize this error message, pass the
+  ``error_messages`` argument with the key ``'missing_management_form'`` when
+  instantiating the formset.
 
 Generic Views
 ~~~~~~~~~~~~~
@@ -385,6 +394,9 @@ Templates
 * :tfilter:`floatformat` template filter now allows using the ``g`` suffix to
   force grouping by the :setting:`THOUSAND_SEPARATOR` for the active locale.
 
+* Templates cached with :ref:`Cached template loaders<template-loaders>` are
+  now correctly reloaded in development.
+
 Tests
 ~~~~~
 
@@ -409,6 +421,11 @@ Tests
   functions passed to :func:`transaction.on_commit()
   <django.db.transaction.on_commit>` in a list. This allows you to test such
   callbacks without using the slower :class:`.TransactionTestCase`.
+
+* :meth:`.TransactionTestCase.assertQuerysetEqual` now supports direct
+  comparison against another queryset rather than being restricted to
+  comparison against a list of string representations of objects when using the
+  default value for the ``transform`` argument.
 
 URLs
 ~~~~
@@ -477,6 +494,12 @@ backends.
   ``DatabaseOperations.time_trunc_sql()`` now take the optional ``tzname``
   argument in order to truncate in a specific timezone.
 
+* ``DatabaseClient.runshell()`` now gets arguments and an optional dictionary
+  with environment variables to the underlying command-line client from
+  ``DatabaseClient.settings_to_cmd_args_env()`` method. Third-party database
+  backends must implement ``DatabaseClient.settings_to_cmd_args_env()`` or
+  override ``DatabaseClient.runshell()``.
+
 :mod:`django.contrib.admin`
 ---------------------------
 
@@ -487,6 +510,11 @@ backends.
 -------------------------
 
 * Support for PostGIS 2.2 is removed.
+
+* The Oracle backend now clones polygons (and geometry collections containing
+  polygons) before reorienting them and saving them to the database. They are
+  no longer mutated in place. You might notice this if you use the polygons
+  after a model is saved.
 
 Dropped support for PostgreSQL 9.5
 ----------------------------------
@@ -592,3 +620,8 @@ Miscellaneous
 * The ``default_app_config`` application configuration variable is deprecated,
   due to the now automatic ``AppConfig`` discovery. See :ref:`whats-new-3.2`
   for more details.
+
+* Automatically calling ``repr()`` on a queryset in
+  ``TransactionTestCase.assertQuerysetEqual()``, when compared to string
+  values, is deprecated. If you need the previous behavior, explicitly set
+  ``transform`` to ``repr``.

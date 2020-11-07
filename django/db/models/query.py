@@ -453,10 +453,12 @@ class QuerySet:
         obj.save(force_insert=True, using=self.db)
         return obj
 
-    def _populate_pk_values(self, objs):
+    def _prepare_for_bulk_create(self, objs):
         for obj in objs:
             if obj.pk is None:
+                # Populate new PK values.
                 obj.pk = obj._meta.pk.get_pk_value_on_save(obj)
+            obj._prepare_related_fields_for_save(operation_name='bulk_create')
 
     def bulk_create(self, objs, batch_size=None, ignore_conflicts=False):
         """
@@ -493,7 +495,7 @@ class QuerySet:
         opts = self.model._meta
         fields = opts.concrete_fields
         objs = list(objs)
-        self._populate_pk_values(objs)
+        self._prepare_for_bulk_create(objs)
         with transaction.atomic(using=self.db, savepoint=False):
             objs_with_pk, objs_without_pk = partition(lambda o: o.pk is None, objs)
             if objs_with_pk:
@@ -694,7 +696,7 @@ class QuerySet:
             field_name != 'pk' and
             not opts.get_field(field_name).unique and
             field_name not in unique_fields and
-            not self.query.distinct_fields == (field_name,)
+            self.query.distinct_fields != (field_name,)
         ):
             raise ValueError("in_bulk()'s field_name must be a unique field but %r isn't." % field_name)
         if id_list is not None:
