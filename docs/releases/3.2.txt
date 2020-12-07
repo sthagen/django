@@ -114,6 +114,12 @@ Minor features
 * The :meth:`.GDALRaster.transform` method now supports
   :class:`~django.contrib.gis.gdal.SpatialReference`.
 
+* The :class:`~django.contrib.gis.gdal.DataSource` class now supports
+  :class:`pathlib.Path`.
+
+* The :class:`~django.contrib.gis.utils.LayerMapping` class now supports
+  :class:`pathlib.Path`.
+
 :mod:`django.contrib.messages`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -142,6 +148,9 @@ Minor features
   :class:`~django.contrib.postgres.operations.RemoveCollation` operations
   allow creating and dropping collations on PostgreSQL. See
   :ref:`manage-postgresql-collations` for more details.
+
+* Lookups for :class:`~django.contrib.postgres.fields.ArrayField` now allow
+  (non-nested) arrays containing expressions as right-hand sides.
 
 :mod:`django.contrib.redirects`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,6 +281,11 @@ Management Commands
   prior to executing the command. In previous versions, either all or none
   of the system checks were performed.
 
+* Support for colored terminal output on Windows is updated. Various modern
+  terminal environments are automatically detected, and the options for
+  enabling support in other cases are improved. See :ref:`syntax-coloring` for
+  more details.
+
 Migrations
 ~~~~~~~~~~
 
@@ -342,6 +356,18 @@ Models
   database collation for the field.
 
 * Added the :class:`~django.db.models.functions.Random` database function.
+
+* :ref:`aggregation-functions`, :class:`F() <django.db.models.F>`,
+  :class:`OuterRef() <django.db.models.OuterRef>`, and other expressions now
+  allow using transforms. See :ref:`using-transforms-in-expressions` for
+  details.
+
+* The new ``durable`` argument for :func:`~django.db.transaction.atomic`
+  guarantees that changes made in the atomic block will be committed if the
+  block exits without errors. A nested atomic block marked as durable will
+  raise a ``RuntimeError``.
+
+* Added the :class:`~django.db.models.functions.JSONObject` database function.
 
 Pagination
 ~~~~~~~~~~
@@ -594,6 +620,15 @@ Miscellaneous
 
 * The password reset mechanism now invalidates tokens when the user email is
   changed.
+
+* :djadmin:`makemessages` command no longer processes invalid locales specified
+  using :option:`makemessages --locale` option, when they contain hyphens
+  (``'-'``).
+
+* The ``django.contrib.auth.forms.ReadOnlyPasswordHashField`` form field is now
+  :attr:`~django.forms.Field.disabled` by default. Therefore
+  ``UserChangeForm.clean_password()`` is no longer required to return the
+  initial value.
 
 .. _deprecated-features-3.2:
 

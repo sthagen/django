@@ -100,11 +100,7 @@ class TimeFormat(Formatter):
 
     def g(self):
         "Hour, 12-hour format without leading zeros; i.e. '1' to '12'"
-        if self.data.hour == 0:
-            return 12
-        if self.data.hour > 12:
-            return self.data.hour - 12
-        return self.data.hour
+        return self.data.hour % 12 or 12
 
     def G(self):
         "Hour, 24-hour format without leading zeros; i.e. '0' to '23'"
@@ -325,8 +321,8 @@ class DateFormat(TimeFormat):
         return self.data.isocalendar()[1]
 
     def y(self):
-        "Year, 2 digits; e.g. '99'"
-        return str(self.data.year)[2:]
+        """Year, 2 digits with leading zeros; e.g. '99'."""
+        return '%02d' % (self.data.year % 100)
 
     def Y(self):
         "Year, 4 digits; e.g. '1999'"

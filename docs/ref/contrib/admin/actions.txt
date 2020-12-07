@@ -186,7 +186,7 @@ provided by the admin.
 
 .. _custom-admin-action:
 
-For example, we can use ``self`` to flash a message to the user informing her
+For example, we can use ``self`` to flash a message to the user informing them
 that the action was successful::
 
     from django.contrib import messages
@@ -217,7 +217,7 @@ will need to return intermediate pages. For example, the built-in delete action
 asks for confirmation before deleting the selected objects.
 
 To provide an intermediary page, return an :class:`~django.http.HttpResponse`
-(or subclass) from your action. For example, you might write a export function
+(or subclass) from your action. For example, you might write an export function
 that uses Django's :doc:`serialization functions </topics/serialization>` to
 dump some selected objects as JSON::
 

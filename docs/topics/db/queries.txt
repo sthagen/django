@@ -669,6 +669,36 @@ The ``F()`` objects support bitwise operations by ``.bitand()``, ``.bitor()``,
 
     Support for ``.bitxor()`` was added.
 
+.. _using-transforms-in-expressions:
+
+Expressions can reference transforms
+------------------------------------
+
+.. versionadded: 3.2
+
+Django supports using transforms in expressions.
+
+For example, to find all ``Entry`` objects published in the same year as they
+were last modified::
+
+    >>> Entry.objects.filter(pub_date__year=F('mod_date__year'))
+
+To find the earliest year an entry was published, we can issue the query::
+
+    >>> Entry.objects.aggregate(first_published_year=Min('pub_date__year'))
+
+This example finds the value of the highest rated entry and the total number
+of comments on all entries for each year::
+
+    >>> Entry.objects.values('pub_date__year').annotate(
+    ...     top_rating=Subquery(
+    ...         Entry.objects.filter(
+    ...             pub_date__year=OuterRef('pub_date__year'),
+    ...         ).order_by('-rating').values('rating')[:1]
+    ...     ),
+    ...     total_comments=Sum('number_of_comments'),
+    ... )
+
 The ``pk`` lookup shortcut
 --------------------------
 
@@ -1283,7 +1313,7 @@ table. Example::
     >>> b = Blog.objects.get(pk=1)
 
     # Update all the headlines belonging to this Blog.
-    >>> Entry.objects.select_related().filter(blog=b).update(headline='Everything is the same')
+    >>> Entry.objects.filter(blog=b).update(headline='Everything is the same')
 
 Be aware that the ``update()`` method is converted directly to an SQL
 statement. It is a bulk operation for direct updates. It doesn't run any

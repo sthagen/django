@@ -525,7 +525,7 @@ class Query(BaseExpression):
     def has_filters(self):
         return self.where
 
-    def exists(self):
+    def exists(self, using, limit=True):
         q = self.clone()
         if not q.distinct:
             if q.group_by is True:
@@ -534,14 +534,21 @@ class Query(BaseExpression):
                 # SELECT clause which is about to be cleared.
                 q.set_group_by(allow_aliases=False)
             q.clear_select_clause()
+        if q.combined_queries and q.combinator == 'union':
+            limit_combined = connections[using].features.supports_slicing_ordering_in_compound
+            q.combined_queries = tuple(
+                combined_query.exists(using, limit=limit_combined)
+                for combined_query in q.combined_queries
+            )
         q.clear_ordering(True)
-        q.set_limits(high=1)
+        if limit:
+            q.set_limits(high=1)
         q.add_extra({'a': 1}, None, None, None, None, None)
         q.set_extra_mask(['a'])
         return q
 
     def has_results(self, using):
-        q = self.exists()
+        q = self.exists(using)
         compiler = q.get_compiler(using=using)
         return compiler.has_results()
 
@@ -1603,6 +1610,8 @@ class Query(BaseExpression):
         # fields to the appropriate wrapped version.
 
         def final_transformer(field, alias):
+            if not self.alias_cols:
+                alias = None
             return field.get_col(alias)
 
         # Try resolving all the names as fields first. If there's an error,
@@ -1707,8 +1716,6 @@ class Query(BaseExpression):
         yield from (expr.alias for expr in cls._gen_cols(exprs))
 
     def resolve_ref(self, name, allow_joins=True, reuse=None, summarize=False):
-        if not allow_joins and LOOKUP_SEP in name:
-            raise FieldError("Joined field references are not permitted in this query")
         annotation = self.annotations.get(name)
         if annotation is not None:
             if not allow_joins:
@@ -1733,6 +1740,11 @@ class Query(BaseExpression):
                 return annotation
         else:
             field_list = name.split(LOOKUP_SEP)
+            annotation = self.annotations.get(field_list[0])
+            if annotation is not None:
+                for transform in field_list[1:]:
+                    annotation = self.try_transform(annotation, transform)
+                return annotation
             join_info = self.setup_joins(field_list, self.get_meta(), self.get_initial_alias(), can_reuse=reuse)
             targets, final_alias, join_list = self.trim_joins(join_info.targets, join_info.joins, join_info.path)
             if not allow_joins and len(join_list) > 1:
@@ -1742,10 +1754,10 @@ class Query(BaseExpression):
                                  "isn't supported")
             # Verify that the last lookup in name is a field or a transform:
             # transform_function() raises FieldError if not.
-            join_info.transform_function(targets[0], final_alias)
+            transform = join_info.transform_function(targets[0], final_alias)
             if reuse is not None:
                 reuse.update(join_list)
-            return self._get_col(targets[0], join_info.targets[0], join_list[-1])
+            return transform
 
     def split_exclude(self, filter_expr, can_reuse, names_with_path):
         """
@@ -1881,9 +1893,9 @@ class Query(BaseExpression):
         self.select = ()
         self.values_select = ()
 
-    def add_select_col(self, col):
+    def add_select_col(self, col, name):
         self.select += col,
-        self.values_select += col.output_field.name,
+        self.values_select += name,
 
     def set_select(self, cols):
         self.default_cols = False

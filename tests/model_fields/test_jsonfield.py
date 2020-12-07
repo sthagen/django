@@ -25,7 +25,9 @@ from django.test import (
 )
 from django.test.utils import CaptureQueriesContext
 
-from .models import CustomJSONDecoder, JSONModel, NullableJSONModel
+from .models import (
+    CustomJSONDecoder, JSONModel, NullableJSONModel, RelatedJSONModel,
+)
 
 
 @skipUnlessDBFeature('supports_json_field')
@@ -276,6 +278,8 @@ class TestQuerying(TestCase):
                 'j': None,
                 'k': {'l': 'm'},
                 'n': [None],
+                'o': '"quoted"',
+                'p': 4.2,
             },
             [1, [2]],
             {'k': True, 'l': False, 'foo': 'bax'},
@@ -355,12 +359,11 @@ class TestQuerying(TestCase):
             operator.itemgetter('key', 'count'),
         )
 
-    @skipUnlessDBFeature('allows_group_by_lob')
     def test_ordering_grouping_by_count(self):
         qs = NullableJSONModel.objects.filter(
             value__isnull=False,
         ).values('value__d__0').annotate(count=Count('value__d__0')).order_by('count')
-        self.assertQuerysetEqual(qs, [1, 11], operator.itemgetter('count'))
+        self.assertQuerysetEqual(qs, [0, 1], operator.itemgetter('count'))
 
     def test_order_grouping_custom_decoder(self):
         NullableJSONModel.objects.create(value_custom={'a': 'b'})
@@ -398,6 +401,17 @@ class TestQuerying(TestCase):
             [self.objs[4]],
         )
 
+    def test_key_transform_annotation_expression(self):
+        obj = NullableJSONModel.objects.create(value={'d': ['e', 'e']})
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__d__0__isnull=False).annotate(
+                key=F('value__d'),
+                chain=F('key__0'),
+                expr=Cast('key', models.JSONField()),
+            ).filter(chain=F('expr__1')),
+            [obj],
+        )
+
     def test_nested_key_transform_expression(self):
         self.assertSequenceEqual(
             NullableJSONModel.objects.filter(value__d__0__isnull=False).annotate(
@@ -405,6 +419,31 @@ class TestQuerying(TestCase):
                 chain=KeyTransform('f', KeyTransform('1', 'key')),
                 expr=KeyTransform('f', KeyTransform('1', Cast('key', models.JSONField()))),
             ).filter(chain=F('expr')),
+            [self.objs[4]],
+        )
+
+    def test_nested_key_transform_annotation_expression(self):
+        obj = NullableJSONModel.objects.create(
+            value={'d': ['e', {'f': 'g'}, {'f': 'g'}]},
+        )
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__d__0__isnull=False).annotate(
+                key=F('value__d'),
+                chain=F('key__1__f'),
+                expr=Cast('key', models.JSONField()),
+            ).filter(chain=F('expr__2__f')),
+            [obj],
+        )
+
+    def test_nested_key_transform_on_subquery(self):
+        self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__d__0__isnull=False).annotate(
+                subquery_value=Subquery(
+                    NullableJSONModel.objects.filter(pk=OuterRef('pk')).values('value')
+                ),
+                key=KeyTransform('d', 'subquery_value'),
+                chain=KeyTransform('f', KeyTransform('1', 'key')),
+            ).filter(chain='g'),
             [self.objs[4]],
         )
 
@@ -435,12 +474,15 @@ class TestQuerying(TestCase):
         tests = [
             (Q(value__baz__has_key='a'), self.objs[7]),
             (Q(value__has_key=KeyTransform('a', KeyTransform('baz', 'value'))), self.objs[7]),
+            (Q(value__has_key=F('value__baz__a')), self.objs[7]),
             (Q(value__has_key=KeyTransform('c', KeyTransform('baz', 'value'))), self.objs[7]),
+            (Q(value__has_key=F('value__baz__c')), self.objs[7]),
             (Q(value__d__1__has_key='f'), self.objs[4]),
             (
                 Q(value__has_key=KeyTransform('f', KeyTransform('1', KeyTransform('d', 'value')))),
                 self.objs[4],
-            )
+            ),
+            (Q(value__has_key=F('value__d__1__f')), self.objs[4]),
         ]
         for condition, expected in tests:
             with self.subTest(condition=condition):
@@ -455,6 +497,7 @@ class TestQuerying(TestCase):
             Q(value__1__has_key='b'),
             Q(value__has_key=KeyTransform('b', KeyTransform(1, 'value'))),
             Q(value__has_key=KeyTransform('b', KeyTransform('1', 'value'))),
+            Q(value__has_key=F('value__1__b')),
         ]
         for condition in tests:
             with self.subTest(condition=condition):
@@ -719,11 +762,13 @@ class TestQuerying(TestCase):
                 [KeyTransform('foo', KeyTransform('bax', 'value'))],
                 [self.objs[7]],
             ),
+            ('value__foo__in', [F('value__bax__foo')], [self.objs[7]]),
             (
                 'value__foo__in',
                 [KeyTransform('foo', KeyTransform('bax', 'value')), 'baz'],
                 [self.objs[7]],
             ),
+            ('value__foo__in', [F('value__bax__foo'), 'baz'], [self.objs[7]]),
             ('value__foo__in', ['bar', 'baz'], [self.objs[7]]),
             ('value__bar__in', [['foo', 'bar']], [self.objs[7]]),
             ('value__bar__in', [['foo', 'bar'], ['a']], [self.objs[7]]),
@@ -735,6 +780,23 @@ class TestQuerying(TestCase):
                     NullableJSONModel.objects.filter(**{lookup: value}),
                     expected,
                 )
+
+    def test_key_values(self):
+        qs = NullableJSONModel.objects.filter(value__h=True)
+        tests = [
+            ('value__a', 'b'),
+            ('value__c', 14),
+            ('value__d', ['e', {'f': 'g'}]),
+            ('value__h', True),
+            ('value__i', False),
+            ('value__j', None),
+            ('value__k', {'l': 'm'}),
+            ('value__n', [None]),
+            ('value__p', 4.2),
+        ]
+        for lookup, expected in tests:
+            with self.subTest(lookup=lookup):
+                self.assertEqual(qs.values_list(lookup, flat=True).get(), expected)
 
     @skipUnlessDBFeature('supports_json_field_contains')
     def test_key_contains(self):
@@ -761,6 +823,12 @@ class TestQuerying(TestCase):
 
     def test_key_iregex(self):
         self.assertIs(NullableJSONModel.objects.filter(value__foo__iregex=r'^bAr$').exists(), True)
+
+    def test_key_quoted_string(self):
+        self.assertEqual(
+            NullableJSONModel.objects.filter(value__o='"quoted"').get(),
+            self.objs[4],
+        )
 
     @skipUnlessDBFeature('has_json_operators')
     def test_key_sql_injection(self):
@@ -813,6 +881,7 @@ class TestQuerying(TestCase):
             ('value__d__contains', 'e'),
             ('value__d__contains', [{'f': 'g'}]),
             ('value__contains', KeyTransform('bax', 'value')),
+            ('value__contains', F('value__bax')),
             ('value__baz__contains', {'a': 'b'}),
             ('value__baz__contained_by', {'a': 'b', 'c': 'd', 'e': 'f'}),
             (
@@ -832,3 +901,22 @@ class TestQuerying(TestCase):
                 self.assertIs(NullableJSONModel.objects.filter(
                     **{lookup: value},
                 ).exists(), True)
+
+    def test_join_key_transform_annotation_expression(self):
+        related_obj = RelatedJSONModel.objects.create(
+            value={'d': ['f', 'e']},
+            json_model=self.objs[4],
+        )
+        RelatedJSONModel.objects.create(
+            value={'d': ['e', 'f']},
+            json_model=self.objs[4],
+        )
+        self.assertSequenceEqual(
+            RelatedJSONModel.objects.annotate(
+                key=F('value__d'),
+                related_key=F('json_model__value__d'),
+                chain=F('key__1'),
+                expr=Cast('key', models.JSONField()),
+            ).filter(chain=F('related_key__0')),
+            [related_obj],
+        )

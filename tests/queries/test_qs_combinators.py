@@ -3,6 +3,7 @@ import operator
 from django.db import DatabaseError, NotSupportedError, connection
 from django.db.models import Exists, F, IntegerField, OuterRef, Value
 from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
+from django.test.utils import CaptureQueriesContext
 
 from .models import Number, ReservedName
 
@@ -211,6 +212,28 @@ class QuerySetSetOperationTests(TestCase):
             with self.subTest(qs=qs):
                 self.assertEqual(list(qs), expected_result)
 
+    def test_union_with_values_list_and_order_on_annotation(self):
+        qs1 = Number.objects.annotate(
+            annotation=Value(-1),
+            multiplier=F('annotation'),
+        ).filter(num__gte=6)
+        qs2 = Number.objects.annotate(
+            annotation=Value(2),
+            multiplier=F('annotation'),
+        ).filter(num__lte=5)
+        self.assertSequenceEqual(
+            qs1.union(qs2).order_by('annotation', 'num').values_list('num', flat=True),
+            [6, 7, 8, 9, 0, 1, 2, 3, 4, 5],
+        )
+        self.assertQuerysetEqual(
+            qs1.union(qs2).order_by(
+                F('annotation') * F('multiplier'),
+                'num',
+            ).values('num'),
+            [6, 7, 8, 9, 0, 1, 2, 3, 4, 5],
+            operator.itemgetter('num'),
+        )
+
     def test_count_union(self):
         qs1 = Number.objects.filter(num__lte=1).values('num')
         qs2 = Number.objects.filter(num__gte=2, num__lte=3).values('num')
@@ -231,6 +254,41 @@ class QuerySetSetOperationTests(TestCase):
         qs1 = Number.objects.filter(num__gte=5)
         qs2 = Number.objects.filter(num__lte=5)
         self.assertEqual(qs1.intersection(qs2).count(), 1)
+
+    def test_exists_union(self):
+        qs1 = Number.objects.filter(num__gte=5)
+        qs2 = Number.objects.filter(num__lte=5)
+        with CaptureQueriesContext(connection) as context:
+            self.assertIs(qs1.union(qs2).exists(), True)
+        captured_queries = context.captured_queries
+        self.assertEqual(len(captured_queries), 1)
+        captured_sql = captured_queries[0]['sql']
+        self.assertNotIn(
+            connection.ops.quote_name(Number._meta.pk.column),
+            captured_sql,
+        )
+        self.assertEqual(
+            captured_sql.count(connection.ops.limit_offset_sql(None, 1)),
+            3 if connection.features.supports_slicing_ordering_in_compound else 1
+        )
+
+    def test_exists_union_empty_result(self):
+        qs = Number.objects.filter(pk__in=[])
+        self.assertIs(qs.union(qs).exists(), False)
+
+    @skipUnlessDBFeature('supports_select_intersection')
+    def test_exists_intersection(self):
+        qs1 = Number.objects.filter(num__gt=5)
+        qs2 = Number.objects.filter(num__lt=5)
+        self.assertIs(qs1.intersection(qs1).exists(), True)
+        self.assertIs(qs1.intersection(qs2).exists(), False)
+
+    @skipUnlessDBFeature('supports_select_difference')
+    def test_exists_difference(self):
+        qs1 = Number.objects.filter(num__gte=5)
+        qs2 = Number.objects.filter(num__gte=3)
+        self.assertIs(qs1.difference(qs2).exists(), False)
+        self.assertIs(qs2.difference(qs1).exists(), True)
 
     def test_get_union(self):
         qs = Number.objects.filter(num=2)
