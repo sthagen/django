@@ -1,6 +1,6 @@
 import operator
 import uuid
-from unittest import mock, skipIf
+from unittest import mock
 
 from django import forms
 from django.core import serializers
@@ -587,6 +587,10 @@ class TestQuerying(TestCase):
             self.objs[:3] + self.objs[5:],
         )
         self.assertSequenceEqual(
+            NullableJSONModel.objects.filter(value__j__isnull=True),
+            self.objs[:4] + self.objs[5:],
+        )
+        self.assertSequenceEqual(
             NullableJSONModel.objects.filter(value__a__isnull=False),
             [self.objs[3], self.objs[4]],
         )
@@ -719,10 +723,6 @@ class TestQuerying(TestCase):
             objs_with_value,
         )
 
-    @skipIf(
-        connection.vendor == 'oracle',
-        'Raises ORA-00600: internal error code on Oracle 18.',
-    )
     def test_usage_in_subquery(self):
         self.assertSequenceEqual(
             NullableJSONModel.objects.filter(
