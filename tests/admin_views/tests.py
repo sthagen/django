@@ -7,6 +7,7 @@ from urllib.parse import parse_qsl, urljoin, urlparse
 
 import pytz
 
+from django.contrib import admin
 from django.contrib.admin import AdminSite, ModelAdmin
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.admin.models import ADDITION, DELETION, LogEntry
@@ -750,6 +751,17 @@ class AdminViewBasicTest(AdminViewBasicTestCase):
         Post.objects.create(public=None)
         response = self.client.get(reverse('admin:admin_views_post_changelist'))
         self.assertContains(response, 'icon-unknown.svg')
+
+    def test_display_decorator_with_boolean_and_empty_value(self):
+        msg = (
+            'The boolean and empty_value arguments to the @display decorator '
+            'are mutually exclusive.'
+        )
+        with self.assertRaisesMessage(ValueError, msg):
+            class BookAdmin(admin.ModelAdmin):
+                @admin.display(boolean=True, empty_value='(Missing)')
+                def is_published(self, obj):
+                    return obj.publish_date is not None
 
     def test_i18n_language_non_english_default(self):
         """
@@ -6470,3 +6482,214 @@ class GetFormsetsWithInlinesArgumentTest(TestCase):
         post_data = {'name': '2'}
         response = self.client.post(reverse('admin:admin_views_implicitlygeneratedpk_change', args=(1,)), post_data)
         self.assertEqual(response.status_code, 302)
+
+
+@override_settings(ROOT_URLCONF='admin_views.urls')
+class AdminSiteFinalCatchAllPatternTests(TestCase):
+    """
+    Verifies the behaviour of the admin catch-all view.
+
+    * Anonynous/non-staff users are redirected to login for all URLs, whether
+      otherwise valid or not.
+    * APPEND_SLASH is applied for staff if needed.
+    * Otherwise Http404.
+    * Catch-all view disabled via AdminSite.final_catch_all_view.
+    """
+    def test_unknown_url_redirects_login_if_not_authenticated(self):
+        unknown_url = '/test_admin/admin/unknown/'
+        response = self.client.get(unknown_url)
+        self.assertRedirects(response, '%s?next=%s' % (reverse('admin:login'), unknown_url))
+
+    def test_unknown_url_404_if_authenticated(self):
+        superuser = User.objects.create_superuser(
+            username='super',
+            password='secret',
+            email='super@example.com',
+        )
+        self.client.force_login(superuser)
+        unknown_url = '/test_admin/admin/unknown/'
+        response = self.client.get(unknown_url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_known_url_redirects_login_if_not_authenticated(self):
+        known_url = reverse('admin:admin_views_article_changelist')
+        response = self.client.get(known_url)
+        self.assertRedirects(response, '%s?next=%s' % (reverse('admin:login'), known_url))
+
+    def test_known_url_missing_slash_redirects_login_if_not_authenticated(self):
+        known_url = reverse('admin:admin_views_article_changelist')[:-1]
+        response = self.client.get(known_url)
+        # Redirects with the next URL also missing the slash.
+        self.assertRedirects(response, '%s?next=%s' % (reverse('admin:login'), known_url))
+
+    def test_non_admin_url_shares_url_prefix(self):
+        url = reverse('non_admin')[:-1]
+        response = self.client.get(url)
+        # Redirects with the next URL also missing the slash.
+        self.assertRedirects(response, '%s?next=%s' % (reverse('admin:login'), url))
+
+    def test_url_without_trailing_slash_if_not_authenticated(self):
+        url = reverse('admin:article_extra_json')
+        response = self.client.get(url)
+        self.assertRedirects(response, '%s?next=%s' % (reverse('admin:login'), url))
+
+    def test_unkown_url_without_trailing_slash_if_not_authenticated(self):
+        url = reverse('admin:article_extra_json')[:-1]
+        response = self.client.get(url)
+        self.assertRedirects(response, '%s?next=%s' % (reverse('admin:login'), url))
+
+    @override_settings(APPEND_SLASH=True)
+    def test_missing_slash_append_slash_true_unknown_url(self):
+        superuser = User.objects.create_user(
+            username='staff',
+            password='secret',
+            email='staff@example.com',
+            is_staff=True,
+        )
+        self.client.force_login(superuser)
+        unknown_url = '/test_admin/admin/unknown/'
+        response = self.client.get(unknown_url[:-1])
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(APPEND_SLASH=True)
+    def test_missing_slash_append_slash_true(self):
+        superuser = User.objects.create_user(
+            username='staff',
+            password='secret',
+            email='staff@example.com',
+            is_staff=True,
+        )
+        self.client.force_login(superuser)
+        known_url = reverse('admin:admin_views_article_changelist')
+        response = self.client.get(known_url[:-1])
+        self.assertRedirects(response, known_url, status_code=301, target_status_code=403)
+
+    @override_settings(APPEND_SLASH=True)
+    def test_missing_slash_append_slash_true_non_staff_user(self):
+        user = User.objects.create_user(
+            username='user',
+            password='secret',
+            email='user@example.com',
+            is_staff=False,
+        )
+        self.client.force_login(user)
+        known_url = reverse('admin:admin_views_article_changelist')
+        response = self.client.get(known_url[:-1])
+        self.assertRedirects(response, '/test_admin/admin/login/?next=/test_admin/admin/admin_views/article')
+
+    @override_settings(APPEND_SLASH=False)
+    def test_missing_slash_append_slash_false(self):
+        superuser = User.objects.create_user(
+            username='staff',
+            password='secret',
+            email='staff@example.com',
+            is_staff=True,
+        )
+        self.client.force_login(superuser)
+        known_url = reverse('admin:admin_views_article_changelist')
+        response = self.client.get(known_url[:-1])
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(APPEND_SLASH=True)
+    def test_single_model_no_append_slash(self):
+        superuser = User.objects.create_user(
+            username='staff',
+            password='secret',
+            email='staff@example.com',
+            is_staff=True,
+        )
+        self.client.force_login(superuser)
+        known_url = reverse('admin9:admin_views_actor_changelist')
+        response = self.client.get(known_url[:-1])
+        self.assertEqual(response.status_code, 404)
+
+    # Same tests above with final_catch_all_view=False.
+
+    def test_unknown_url_404_if_not_authenticated_without_final_catch_all_view(self):
+        unknown_url = '/test_admin/admin10/unknown/'
+        response = self.client.get(unknown_url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_unknown_url_404_if_authenticated_without_final_catch_all_view(self):
+        superuser = User.objects.create_superuser(
+            username='super',
+            password='secret',
+            email='super@example.com',
+        )
+        self.client.force_login(superuser)
+        unknown_url = '/test_admin/admin10/unknown/'
+        response = self.client.get(unknown_url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_known_url_redirects_login_if_not_authenticated_without_final_catch_all_view(self):
+        known_url = reverse('admin10:admin_views_article_changelist')
+        response = self.client.get(known_url)
+        self.assertRedirects(response, '%s?next=%s' % (reverse('admin10:login'), known_url))
+
+    def test_known_url_missing_slash_redirects_with_slash_if_not_authenticated_without_final_catch_all_view(self):
+        known_url = reverse('admin10:admin_views_article_changelist')
+        response = self.client.get(known_url[:-1])
+        self.assertRedirects(response, known_url, status_code=301, fetch_redirect_response=False)
+
+    def test_non_admin_url_shares_url_prefix_without_final_catch_all_view(self):
+        url = reverse('non_admin10')
+        response = self.client.get(url[:-1])
+        self.assertRedirects(response, url, status_code=301)
+
+    def test_url_without_trailing_slash_if_not_authenticated_without_final_catch_all_view(self):
+        url = reverse('admin10:article_extra_json')
+        response = self.client.get(url)
+        self.assertRedirects(response, '%s?next=%s' % (reverse('admin10:login'), url))
+
+    def test_unkown_url_without_trailing_slash_if_not_authenticated_without_final_catch_all_view(self):
+        url = reverse('admin10:article_extra_json')[:-1]
+        response = self.client.get(url)
+        # Matches test_admin/admin10/admin_views/article/<path:object_id>/
+        self.assertRedirects(response, url + '/', status_code=301, fetch_redirect_response=False)
+
+    @override_settings(APPEND_SLASH=True)
+    def test_missing_slash_append_slash_true_unknown_url_without_final_catch_all_view(self):
+        superuser = User.objects.create_user(
+            username='staff',
+            password='secret',
+            email='staff@example.com',
+            is_staff=True,
+        )
+        self.client.force_login(superuser)
+        unknown_url = '/test_admin/admin10/unknown/'
+        response = self.client.get(unknown_url[:-1])
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(APPEND_SLASH=True)
+    def test_missing_slash_append_slash_true_without_final_catch_all_view(self):
+        superuser = User.objects.create_user(
+            username='staff',
+            password='secret',
+            email='staff@example.com',
+            is_staff=True,
+        )
+        self.client.force_login(superuser)
+        known_url = reverse('admin10:admin_views_article_changelist')
+        response = self.client.get(known_url[:-1])
+        self.assertRedirects(response, known_url, status_code=301, target_status_code=403)
+
+    @override_settings(APPEND_SLASH=False)
+    def test_missing_slash_append_slash_false_without_final_catch_all_view(self):
+        superuser = User.objects.create_user(
+            username='staff',
+            password='secret',
+            email='staff@example.com',
+            is_staff=True,
+        )
+        self.client.force_login(superuser)
+        known_url = reverse('admin10:admin_views_article_changelist')
+        response = self.client.get(known_url[:-1])
+        self.assertEqual(response.status_code, 404)
+
+    # Outside admin.
+
+    def test_non_admin_url_404_if_not_authenticated(self):
+        unknown_url = '/unknown/'
+        response = self.client.get(unknown_url)
+        # Does not redirect to the admin login.
+        self.assertEqual(response.status_code, 404)

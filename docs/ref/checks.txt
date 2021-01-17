@@ -93,15 +93,6 @@ Django's system checks are organized using the following tags:
 
 Some checks may be registered with multiple tags.
 
-.. versionchanged:: 3.1
-
-    The ``async_support`` tag was added.
-
-.. versionchanged:: 3.1
-
-    The ``database`` checks are now run only for database aliases specified
-    using the :option:`check --database` option.
-
 .. versionchanged:: 3.2
 
     The ``sites`` tag was added.
@@ -111,8 +102,6 @@ Core system checks
 
 Asynchronous support
 --------------------
-
-.. versionadded:: 3.1
 
 The following checks verify your setup for :doc:`/topics/async`:
 
@@ -217,10 +206,15 @@ Model fields
 * **fields.W902**: ``FloatRangeField`` is deprecated and will be removed in
   Django 3.1. *This check appeared in Django 2.2 and 3.0*.
 * **fields.W903**: ``NullBooleanField`` is deprecated. Support for it (except
-  in historical migrations) will be removed in Django 4.0.
+  in historical migrations) will be removed in Django 4.0. *This check appeared
+  in Django 3.1 and 3.2*.
+* **fields.E903**: ``NullBooleanField`` is removed except for support in
+  historical migrations.
 * **fields.W904**: ``django.contrib.postgres.fields.JSONField`` is deprecated.
   Support for it (except in historical migrations) will be removed in Django
-  4.0.
+  4.0. *This check appeared in Django 3.1 and 3.2*.
+* **fields.E904**: ``django.contrib.postgres.fields.JSONField`` is removed
+  except for support in historical migrations.
 
 File fields
 ~~~~~~~~~~~
@@ -381,6 +375,7 @@ Models
 * **models.E041**: ``constraints`` refers to the joined field ``<field name>``.
 * **models.W042**: Auto-created primary key used when not defining a primary
   key type, by default ``django.db.models.AutoField``.
+* **models.W043**: ``<database>`` does not support indexes on expressions.
 
 Security
 --------
@@ -499,8 +494,12 @@ The following checks are run if you use the :option:`check --deploy` option:
 The following checks verify that your security-related settings are correctly
 configured:
 
-* **security.E100**: :setting:`DEFAULT_HASHING_ALGORITHM` must be ``'sha1'`` or
-  ``'sha256'``.
+* **security.E100**: ``DEFAULT_HASHING_ALGORITHM`` must be ``'sha1'`` or
+  ``'sha256'``. *This check appeared in Django 3.1 and 3.2*.
+* **security.E101**: The CSRF failure view ``'path.to.view'`` does not take the
+  correct number of arguments.
+* **security.E102**: The CSRF failure view ``'path.to.view'`` could not be
+  imported.
 
 Signals
 -------
